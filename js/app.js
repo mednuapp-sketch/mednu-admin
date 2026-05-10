@@ -96,9 +96,14 @@ async function loadOverview() {
     const ticketsSnap = await db.collection('tickets').where('status', '==', 'open').get();
     document.getElementById('stat-tickets').textContent = ticketsSnap.size;
 
-    // Pending doctors for quick list
-    const pendingSnap = await db.collection('doctors').where('status', '==', 'pending').limit(5).get();
-    renderPendingList(pendingSnap);
+    // Pending doctors for quick list — fetch all and filter client-side
+    // so doctors registered before the status field was introduced also appear
+    const allDoctorsSnap = await db.collection('doctors').get();
+    const pendingDocs = allDoctorsSnap.docs.filter(doc => {
+      const s = doc.data().status;
+      return !s || s === 'pending';
+    }).slice(0, 5);
+    renderPendingList(pendingDocs);
 
     // Revenue chart
     await buildRevenueChart();
@@ -114,11 +119,11 @@ async function loadOverview() {
   }
 }
 
-function renderPendingList(snap) {
+function renderPendingList(docs) {
   const el = document.getElementById('pending-doctors-list');
-  if (snap.empty) { el.innerHTML = '<div class="empty-state"><p>No pending approvals</p></div>'; return; }
+  if (!docs.length) { el.innerHTML = '<div class="empty-state"><p>No pending approvals</p></div>'; return; }
   el.innerHTML = '';
-  snap.forEach(doc => {
+  docs.forEach(doc => {
     const d = doc.data();
     const initials = getInitials(d.name || 'DR');
     const color = randomAvatarColor();
@@ -127,7 +132,7 @@ function renderPendingList(snap) {
       <div class="doc-avatar" style="background:${color.bg};color:${color.fg};">${initials}</div>
       <div style="flex:1;">
         <div class="user-name">${d.name || 'Unknown'}</div>
-        <div class="user-sub">${d.specialisation || 'General'}</div>
+        <div class="user-sub">${d.specialty || d.specialisation || 'General'}</div>
       </div>
       <span class="pill pill-pending">Pending</span>
       <button class="btn btn-approve" style="margin-left:8px;" onclick="approveDoctor('${doc.id}', this)">Approve</button>
@@ -167,7 +172,7 @@ function renderDoctorsTable(doctors) {
       <td>⭐ ${d.rating ? d.rating.toFixed(1) : '—'}</td>
       <td><span class="pill pill-${(d.status||'pending').toLowerCase()}">${capitalize(d.status||'Pending')}</span></td>
       <td>
-        ${d.status === 'pending' ? `
+        ${(!d.status || d.status === 'pending') ? `
           <button class="btn btn-approve" onclick="approveDoctor('${d.id}', this)">Approve</button>
           <button class="btn btn-reject" style="margin-left:4px;" onclick="rejectDoctor('${d.id}', this)">Reject</button>
         ` : `<button class="btn btn-outline" onclick="viewDoctor('${d.id}')">View</button>`}
