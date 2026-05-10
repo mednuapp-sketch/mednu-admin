@@ -78,8 +78,8 @@ async function loadOverview() {
     const doctorsSnap = await db.collection('doctors').get();
     document.getElementById('stat-doctors').textContent = doctorsSnap.size.toLocaleString();
 
-    // Patients count
-    const patientsSnap = await db.collection('patients').get();
+    // Patients count — reads from 'users' (same collection Flutter writes to)
+    const patientsSnap = await db.collection('users').get();
     document.getElementById('stat-patients').textContent = patientsSnap.size.toLocaleString();
 
     // Revenue — sum all payments this month
@@ -212,16 +212,48 @@ document.getElementById('doctor-status-filter')?.addEventListener('change', e =>
 });
 
 // ============================================
-//   PATIENTS
+//   PATIENTS  (real-time — reads from 'users' collection)
 // ============================================
 let allPatients = [];
+let _patientsListener = null;
 
-async function loadPatients() {
-  const snap = await db.collection('patients').orderBy('createdAt', 'desc').get();
-  allPatients = [];
-  snap.forEach(doc => allPatients.push({ id: doc.id, ...doc.data() }));
-  renderPatientsTable(allPatients);
-  buildPatientChart(allPatients);
+function loadPatients() {
+  if (_patientsListener) _patientsListener();
+  _patientsListener = db.collection('users')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snap => {
+      allPatients = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      filterPatients();
+      buildPatientChart(allPatients);
+      // keep overview stat in sync
+      document.getElementById('stat-patients').textContent = allPatients.length.toLocaleString();
+    }, err => console.error('Patients load error:', err));
+}
+
+function filterPatients() {
+  const q = (document.getElementById('patient-search')?.value || '').toLowerCase();
+  const filtered = q
+    ? allPatients.filter(p =>
+        (p.name  || '').toLowerCase().includes(q) ||
+        (p.phone || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q))
+    : allPatients;
+  renderPatientsTable(filtered);
+}
+
+function calcAge(dob) {
+  if (!dob) return '—';
+  // supports DD/MM/YYYY or YYYY-MM-DD
+  let d;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+    const [dd, mm, yyyy] = dob.split('/');
+    d = new Date(`${yyyy}-${mm}-${dd}`);
+  } else {
+    d = new Date(dob);
+  }
+  if (isNaN(d)) return '—';
+  const diff = Date.now() - d.getTime();
+  return Math.floor(diff / (365.25 * 24 * 3600 * 1000)) + ' yrs';
 }
 
 function renderPatientsTable(patients) {
@@ -239,22 +271,15 @@ function renderPatientsTable(patients) {
         <div><div class="user-name">${p.name || '—'}</div><div class="user-sub">${p.email || ''}</div></div>
       </div></td>
       <td>${p.phone || '—'}</td>
-      <td>${p.age || '—'}</td>
-      <td>${p.condition || '—'}</td>
-      <td>${p.totalConsultations || 0}</td>
+      <td>${calcAge(p.dob)}</td>
+      <td>${p.gender || '—'}</td>
+      <td>${p.isPremium ? '⭐ Premium' : 'Free'}</td>
       <td>${formatDate(p.createdAt)}</td>
     </tr>`;
   }).join('');
 }
 
-document.getElementById('patient-search')?.addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  const filtered = allPatients.filter(p =>
-    (p.name||'').toLowerCase().includes(q) ||
-    (p.phone||'').toLowerCase().includes(q)
-  );
-  renderPatientsTable(filtered);
-});
+document.getElementById('patient-search')?.addEventListener('input', filterPatients);
 
 // ============================================
 //   REVENUE
