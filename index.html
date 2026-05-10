@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mednu Admin Panel</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <!-- Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="login-page" class="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon">M</div>
+      <h1>Mednu Admin</h1>
+      <p>Sign in to your admin account</p>
+    </div>
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input id="email" type="email" class="form-input" placeholder="admin@mednu.com" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="password" type="password" class="form-input" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn-primary">Sign in</button>
+      <div id="login-error" class="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app" class="app" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">M</div>
+      <div>
+        <div class="logo-label">Mednu</div>
+        <div class="logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section-label">Main</div>
+      <div class="nav-item active" data-tab="overview" data-title="Overview">
+        <i class="ti ti-layout-dashboard nav-icon" aria-hidden="true"></i> Overview
+      </div>
+      <div class="nav-item" data-tab="doctors" data-title="Doctors">
+        <i class="ti ti-stethoscope nav-icon" aria-hidden="true"></i> Doctors
+      </div>
+      <div class="nav-item" data-tab="patients" data-title="Patients">
+        <i class="ti ti-users nav-icon" aria-hidden="true"></i> Patients
+      </div>
+      <div class="nav-section-label">Finance</div>
+      <div class="nav-item" data-tab="revenue" data-title="Revenue">
+        <i class="ti ti-chart-bar nav-icon" aria-hidden="true"></i> Revenue
+      </div>
+      <div class="nav-item" data-tab="medicines" data-title="Medicines">
+        <i class="ti ti-pill nav-icon" aria-hidden="true"></i> Medicines
+      </div>
+      <div class="nav-section-label">Marketing</div>
+      <div class="nav-item" data-tab="banners" data-title="Promotional Banners">
+        <i class="ti ti-speakerphone nav-icon" aria-hidden="true"></i> Banners
+        <span class="nav-badge nav-badge-green" id="nav-banner-count" style="display:none;">0</span>
+      </div>
+      <div class="nav-section-label">Emergency</div>
+      <div class="nav-item" data-tab="hospitals" data-title="Hospitals">
+        <i class="ti ti-building-hospital nav-icon" aria-hidden="true"></i> Hospitals
+        <span class="nav-badge nav-badge-green" id="nav-hospital-count" style="display:none;">0</span>
+      </div>
+      <div class="nav-item" data-tab="ambulances" data-title="Ambulances">
+        <i class="ti ti-ambulance nav-icon" aria-hidden="true"></i> Ambulances
+        <span class="nav-badge nav-badge-green" id="nav-ambulance-count" style="display:none;">0</span>
+      </div>
+      <div class="nav-section-label">Support</div>
+      <div class="nav-item" data-tab="reports" data-title="Reports">
+        <i class="ti ti-report nav-icon" aria-hidden="true"></i> Reports
+      </div>
+      <div class="nav-item" data-tab="tickets" data-title="Support Tickets">
+        <i class="ti ti-headset nav-icon" aria-hidden="true"></i> Support
+        <span class="nav-badge" id="nav-ticket-count">0</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="admin-info">
+        <div class="admin-avatar">AD</div>
+        <div>
+          <div class="admin-name">Admin</div>
+          <div class="admin-role">Super Admin</div>
+        </div>
+        <button class="logout-btn" id="logout-btn" title="Logout">
+          <i class="ti ti-logout" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="page-title">Overview</div>
+        <div class="page-sub" id="page-sub"></div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn notif-dot">
+          <i class="ti ti-bell" aria-hidden="true"></i>
+        </button>
+        <button class="topbar-btn">
+          <i class="ti ti-refresh" aria-hidden="true"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ===== OVERVIEW TAB ===== -->
+      <div id="tab-overview" class="tab-section active">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e8f0fe;color:#1a73e8;"><i class="ti ti-stethoscope"></i></div>
+            <div class="metric-label">Total Doctors</div>
+            <div class="metric-value" id="stat-doctors">—</div>
+            <div class="metric-change change-up"><i class="ti ti-trending-up"></i> Loading...</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e6f4ea;color:#1e8e3e;"><i class="ti ti-users"></i></div>
+            <div class="metric-label">Total Patients</div>
+            <div class="metric-value" id="stat-patients">—</div>
+            <div class="metric-change change-up"><i class="ti ti-trending-up"></i> Loading...</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fef7e0;color:#f29900;"><i class="ti ti-currency-rupee"></i></div>
+            <div class="metric-label">Revenue (This Month)</div>
+            <div class="metric-value" id="stat-revenue">—</div>
+            <div class="metric-change change-up"><i class="ti ti-trending-up"></i> Via Paytm</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fce8e6;color:#d93025;"><i class="ti ti-ticket"></i></div>
+            <div class="metric-label">Open Tickets</div>
+            <div class="metric-value" id="stat-tickets">—</div>
+            <div class="metric-change change-down">Needs attention</div>
+          </div>
+        </div>
+
+        <div class="grid-3-1">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Revenue — Last 6 Months</span>
+            </div>
+            <div class="chart-container" style="height:180px;">
+              <canvas id="revenue-chart" role="img" aria-label="Revenue bar chart last 6 months">Revenue trend.</canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Pending Approvals</span>
+              <span class="card-link" onclick="switchTab('doctors','Doctors')">View all</span>
+            </div>
+            <div id="pending-doctors-list"><div class="loading">Loading...</div></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Top Prescribed Medicines</span></div>
+            <div id="top-medicines-list"><div class="loading">Loading...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Support Tickets</span></div>
+            <div id="recent-tickets"><div class="loading">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== DOCTORS TAB ===== -->
+      <div id="tab-doctors" class="tab-section">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Doctors</span>
+            <div style="display:flex;gap:8px;">
+              <input id="doctor-search" type="text" class="search-input" placeholder="Search doctors..." />
+              <select id="doctor-status-filter" class="filter-select">
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+                <option value="review">Under Review</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Doctor</th><th>Specialisation</th><th>Phone</th>
+                  <th>Consultations</th><th>Rating</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="doctors-tbody">
+                <tr><td colspan="7" class="loading">Loading doctors...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PATIENTS TAB ===== -->
+      <div id="tab-patients" class="tab-section">
+        <div class="grid-2" style="margin-bottom:16px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Patient Registrations</span></div>
+            <div class="chart-container" style="height:160px;">
+              <canvas id="patient-chart" role="img" aria-label="Patient registration trend">Patient registrations over time.</canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Quick Stats</span></div>
+            <div class="mini-bar-row"><span class="mini-bar-label">Returned patients</span><span style="font-size:13px;font-weight:500;color:var(--text-primary);">—</span></div>
+            <div class="mini-bar-row"><span class="mini-bar-label">Avg. consultations</span><span style="font-size:13px;font-weight:500;color:var(--text-primary);">—</span></div>
+            <div class="mini-bar-row"><span class="mini-bar-label">Pending payments</span><span style="font-size:13px;font-weight:500;color:var(--danger);">—</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Patients</span>
+            <input id="patient-search" type="text" class="search-input" placeholder="Search patients..." />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Patient</th><th>Phone</th><th>Age</th><th>Condition</th><th>Consultations</th><th>Joined</th></tr></thead>
+              <tbody id="patients-tbody"><tr><td colspan="6" class="loading">Loading patients...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== REVENUE TAB ===== -->
+      <div id="tab-revenue" class="tab-section">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Revenue by Source — Last 6 Months</span></div>
+          <div class="chart-container" style="height:220px;">
+            <canvas id="revenue-detail-chart" role="img" aria-label="Stacked revenue chart">Revenue breakdown by type.</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">All Transactions</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Payment ID</th><th>Patient</th><th>Doctor</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody id="payments-tbody"><tr><td colspan="6" class="loading">Loading transactions...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MEDICINES TAB ===== -->
+      <div id="tab-medicines" class="tab-section">
+        <div class="grid-2" style="margin-bottom:16px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Top 8 Medicines</span></div>
+            <div class="chart-container" style="height:220px;">
+              <canvas id="medicines-chart" role="img" aria-label="Horizontal bar chart of top medicines">Top medicines by prescription count.</canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Full Medicines List</span></div>
+            <div class="table-wrap" style="max-height:240px;overflow-y:auto;">
+              <table>
+                <thead><tr><th>#</th><th>Medicine</th><th>Prescriptions</th></tr></thead>
+                <tbody id="medicines-tbody"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== REPORTS TAB ===== -->
+      <div id="tab-reports" class="tab-section">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Generate Report</span></div>
+          <div class="report-form">
+            <div class="form-group">
+              <label class="form-label">Report type</label>
+              <select id="report-type" class="filter-select" style="width:100%;">
+                <option>Revenue Summary</option>
+                <option>Doctor Performance</option>
+                <option>Patient Analytics</option>
+                <option>Medicine Usage</option>
+                <option>Support Tickets</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date range</label>
+              <select id="report-range" class="filter-select" style="width:100%;">
+                <option>This Month</option>
+                <option>Last 3 Months</option>
+                <option>Last 6 Months</option>
+                <option>This Year</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Format</label>
+              <select class="filter-select" style="width:100%;">
+                <option>PDF</option>
+                <option>Excel</option>
+                <option>CSV</option>
+              </select>
+            </div>
+            <button id="generate-report-btn" class="btn-generate">
+              <i class="ti ti-download"></i> Generate
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Generated Reports</span></div>
+          <div id="reports-list"><div class="loading">Loading reports...</div></div>
+        </div>
+      </div>
+
+      <!-- ===== BANNERS TAB ===== -->
+      <div id="tab-banners" class="tab-section">
+
+        <!-- Create / Edit Banner -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title" id="banner-form-title">Create New Banner</span>
+            <button class="btn btn-outline" id="cancel-banner-btn" style="display:none;" onclick="cancelBannerEdit()">
+              <i class="ti ti-x"></i> Cancel
+            </button>
+          </div>
+
+          <!-- Image upload zone -->
+          <div class="banner-upload-zone" id="banner-upload-zone" onclick="document.getElementById('banner-file-input').click()" role="button" tabindex="0" aria-label="Click to upload banner image">
+            <div class="banner-upload-placeholder" id="banner-upload-placeholder">
+              <i class="ti ti-photo-plus"></i>
+              <p>Click to upload banner image</p>
+              <small>JPG, PNG, WebP · Max 5 MB · Recommended 1200 × 628 px</small>
+            </div>
+            <img id="banner-preview-img" style="display:none;" alt="Banner preview" />
+          </div>
+          <input type="file" id="banner-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="previewBannerImage(event)" />
+
+          <!-- Form fields -->
+          <div class="banner-form-grid">
+            <div class="form-group">
+              <label class="form-label">Title <span class="form-hint">(optional)</span></label>
+              <input id="banner-title" type="text" class="form-input" placeholder="e.g. Summer Health Offer" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description <span class="form-hint">(optional)</span></label>
+              <input id="banner-desc" type="text" class="form-input" placeholder="Short tagline or description" maxlength="140" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">CTA Button Text <span class="form-hint">(optional)</span></label>
+              <input id="banner-cta-text" type="text" class="form-input" placeholder="e.g. Book Now, View Offer" maxlength="30" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">CTA Link / Route <span class="form-hint">(optional)</span></label>
+              <input id="banner-cta-url" type="text" class="form-input" placeholder="e.g. /appointment or https://..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start Date <span class="form-hint">(optional — show from)</span></label>
+              <input id="banner-start-date" type="datetime-local" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Date <span class="form-hint">(optional — hide after)</span></label>
+              <input id="banner-end-date" type="datetime-local" class="form-input" />
+            </div>
+          </div>
+
+          <div class="banner-form-footer">
+            <label class="toggle-label">
+              <input type="checkbox" id="banner-enabled" checked />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Publish immediately</span>
+            </label>
+            <div id="banner-upload-progress" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+              <div class="upload-spinner"></div> Uploading image…
+            </div>
+            <button id="publish-banner-btn" class="btn-publish" onclick="publishBanner()">
+              <i class="ti ti-upload"></i> Publish Banner
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner History -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Banner History</span>
+            <select id="banner-filter" class="filter-select">
+              <option value="all">All banners</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="expired">Expired</option>
+            </select>
+          </div>
+          <div id="banners-list"><div class="loading">Loading banners…</div></div>
+        </div>
+
+      </div>
+
+      <!-- ===== TICKETS TAB ===== -->
+      <div id="tab-tickets" class="tab-section">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Support Tickets</span>
+            <select id="ticket-filter" class="filter-select">
+              <option value="all">All tickets</option>
+              <option value="open">Open</option>
+              <option value="resolved">Resolved</option>
+              <option value="high">High priority</option>
+              <option value="medium">Medium priority</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Issue</th><th>User</th><th>Priority</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+              <tbody id="tickets-tbody"><tr><td colspan="7" class="loading">Loading tickets...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== HOSPITALS TAB ===== -->
+      <div id="tab-hospitals" class="tab-section">
+
+        <!-- Add / Edit Hospital -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title" id="hospital-form-title">Add Hospital</span>
+            <button class="btn btn-outline" id="cancel-hospital-btn" style="display:none;" onclick="cancelHospitalEdit()">
+              <i class="ti ti-x"></i> Cancel
+            </button>
+          </div>
+          <div class="banner-form-grid">
+            <div class="form-group">
+              <label class="form-label">Hospital Name <span style="color:var(--danger)">*</span></label>
+              <input id="hosp-name" type="text" class="form-input" placeholder="e.g. Apollo Hospitals" maxlength="100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address <span style="color:var(--danger)">*</span></label>
+              <input id="hosp-address" type="text" class="form-input" placeholder="e.g. Jubilee Hills, Hyderabad" maxlength="200" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input id="hosp-phone" type="tel" class="form-input" placeholder="e.g. 040-23607777" maxlength="20" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Google Maps Link <span class="form-hint">(optional)</span></label>
+              <input id="hosp-maps" type="url" class="form-input" placeholder="https://maps.google.com/..." />
+            </div>
+          </div>
+          <div class="banner-form-footer">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;flex:1;">
+              <label class="toggle-label">
+                <input type="checkbox" id="hosp-emergency" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Mark as Emergency Hospital</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="hosp-enabled" checked />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Visible in app</span>
+              </label>
+            </div>
+            <button id="save-hospital-btn" class="btn-publish" onclick="saveHospital()">
+              <i class="ti ti-device-floppy"></i> Save Hospital
+            </button>
+          </div>
+        </div>
+
+        <!-- Hospitals List -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Hospitals</span>
+            <div style="display:flex;gap:8px;">
+              <input id="hospital-search" type="text" class="search-input" placeholder="Search hospitals..." oninput="filterHospitals()" />
+              <select id="hospital-type-filter" class="filter-select" onchange="filterHospitals()">
+                <option value="all">All</option>
+                <option value="emergency">Emergency only</option>
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
+          </div>
+          <div id="hospitals-list"><div class="loading">Loading hospitals…</div></div>
+        </div>
+      </div>
+
+      <!-- ===== AMBULANCES TAB ===== -->
+      <div id="tab-ambulances" class="tab-section">
+
+        <!-- Add / Edit Ambulance -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title" id="ambulance-form-title">Add Ambulance Service</span>
+            <button class="btn btn-outline" id="cancel-ambulance-btn" style="display:none;" onclick="cancelAmbulanceEdit()">
+              <i class="ti ti-x"></i> Cancel
+            </button>
+          </div>
+          <div class="banner-form-grid">
+            <div class="form-group">
+              <label class="form-label">Service Name <span style="color:var(--danger)">*</span></label>
+              <input id="amb-name" type="text" class="form-input" placeholder="e.g. Apollo Ambulance" maxlength="100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number <span style="color:var(--danger)">*</span></label>
+              <input id="amb-phone" type="tel" class="form-input" placeholder="e.g. 040-23607777" maxlength="20" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ambulance Type</label>
+              <select id="amb-type" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                <option value="Basic">Basic</option>
+                <option value="ALS">Advanced Life Support (ALS)</option>
+                <option value="ICU">ICU Ambulance</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Service Area <span class="form-hint">(optional)</span></label>
+              <input id="amb-area" type="text" class="form-input" placeholder="e.g. Hyderabad, Secunderabad" maxlength="100" />
+            </div>
+          </div>
+          <div class="banner-form-footer">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;flex:1;">
+              <label class="toggle-label">
+                <input type="checkbox" id="amb-available" checked />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Available now</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="amb-enabled" checked />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Visible in app</span>
+              </label>
+            </div>
+            <button id="save-ambulance-btn" class="btn-publish" onclick="saveAmbulance()">
+              <i class="ti ti-device-floppy"></i> Save Ambulance
+            </button>
+          </div>
+        </div>
+
+        <!-- Ambulances List -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Ambulance Services</span>
+            <select id="ambulance-type-filter" class="filter-select" onchange="filterAmbulances()">
+              <option value="all">All types</option>
+              <option value="Basic">Basic</option>
+              <option value="ALS">ALS</option>
+              <option value="ICU">ICU</option>
+            </select>
+          </div>
+          <div id="ambulances-list"><div class="loading">Loading ambulance services…</div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div id="toast" class="toast"></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
