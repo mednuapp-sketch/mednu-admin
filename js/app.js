@@ -67,6 +67,10 @@ async function initDashboard() {
   loadBanners();
   loadHospitals();
   loadAmbulances();
+  loadReferralSettings();
+  loadReferralStats();
+  loadReferrals();
+  loadFeedbacks();
 }
 
 // ============================================
@@ -196,7 +200,102 @@ async function rejectDoctor(id, btn) {
 }
 
 function viewDoctor(id) {
-  showToast('Doctor profile view — coming soon!');
+  const d = allDoctors.find(x => x.id === id);
+  if (!d) return;
+  showDoctorModal(d);
+}
+
+function showDoctorModal(d) {
+  // Remove existing modal if any
+  document.getElementById('doctor-modal')?.remove();
+
+  const docs = d.documents || {};
+  const docKeys = {
+    mbbs_degree:   'MBBS Degree Certificate',
+    spec_cert:     'Specialization Certificate',
+    mbbs_reg_cert: 'MBBS Registration Certificate',
+    renewal_cert:  'Renewal Certificate',
+    profile_photo: 'Profile Photo',
+  };
+
+  const docHtml = Object.entries(docKeys).map(([key, label]) => {
+    const url = docs[key];
+    return url
+      ? `<div style="margin-bottom:10px;">
+           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">${label}</div>
+           <a href="${url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--primary-light,#f3e5f5);color:var(--primary,#880E4F);border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">
+             <span>🔗</span> View Document
+           </a>
+         </div>`
+      : `<div style="margin-bottom:10px;">
+           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">${label}</div>
+           <span style="font-size:12px;color:#aaa;font-style:italic;">Not uploaded</span>
+         </div>`;
+  }).join('');
+
+  const isPending = !d.status || d.status === 'pending';
+
+  const modal = document.createElement('div');
+  modal.id = 'doctor-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h2 style="font-size:18px;font-weight:700;margin:0;">Doctor Profile</h2>
+        <button onclick="document.getElementById('doctor-modal').remove()"
+          style="border:none;background:none;font-size:22px;cursor:pointer;color:#666;">&times;</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:20px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#880E4F,#7B1FA2);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">${getInitials(d.name||'DR')}</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;">${d.name||'—'}</div>
+          <div style="font-size:13px;color:#888;">${d.specialty||d.specialisation||'—'} • ${d.experience||'—'} yrs</div>
+          <div style="font-size:12px;color:#aaa;margin-top:2px;">${d.phone||''} ${d.email ? '• '+d.email : ''}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        ${[['Reg. Number', d.registrationNumber||'—'],['Qualifications', d.qualifications||'—'],['Fee', d.fee ? '₹'+d.fee : '—'],['Gender', d.gender||'—']].map(([l,v])=>`
+          <div style="padding:12px;background:#f9f9f9;border-radius:10px;">
+            <div style="font-size:11px;color:#aaa;font-weight:600;text-transform:uppercase;">${l}</div>
+            <div style="font-size:14px;font-weight:600;margin-top:2px;">${v}</div>
+          </div>`).join('')}
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">📄 Submitted Documents</div>
+        ${docHtml}
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:8px;">
+        ${isPending ? `
+          <button onclick="approveFromModal('${d.id}')" style="flex:1;padding:12px;background:#2e7d32;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✓ Approve Doctor</button>
+          <button onclick="rejectFromModal('${d.id}')" style="flex:1;padding:12px;background:#c62828;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✕ Reject Doctor</button>
+        ` : `
+          <div style="flex:1;padding:12px;text-align:center;border-radius:12px;font-weight:700;font-size:14px;background:${d.status==='active'?'#e8f5e9':'#fce4ec'};color:${d.status==='active'?'#2e7d32':'#c62828'};">
+            Status: ${d.status==='active'?'✓ Approved':'✕ Rejected'}
+          </div>
+        `}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function approveFromModal(id) {
+  await db.collection('doctors').doc(id).update({ status: 'active' });
+  showToast('Doctor approved successfully!');
+  document.getElementById('doctor-modal')?.remove();
+  loadDoctors(); loadOverview();
+}
+
+async function rejectFromModal(id) {
+  if (!confirm('Are you sure you want to reject this doctor application?')) return;
+  await db.collection('doctors').doc(id).update({ status: 'suspended' });
+  showToast('Doctor application rejected.');
+  document.getElementById('doctor-modal')?.remove();
+  loadDoctors(); loadOverview();
 }
 
 // Doctors search & filter
@@ -1317,4 +1416,257 @@ async function deleteAmbulance(id, btn) {
     btn.disabled = false;
     showToast('Delete failed: ' + err.message);
   }
+}
+
+// ============================================
+//   REFERRALS
+// ============================================
+
+let _allReferrals = [];
+
+// ---- Load config from Firestore and populate form ----
+async function loadReferralSettings() {
+  try {
+    const snap = await db.collection('referralConfig').doc('settings').get();
+    const d = snap.exists ? snap.data() : {};
+
+    document.getElementById('ref-enabled').checked        = d.referralEnabled  !== false;
+    document.getElementById('ref-rewards-enabled').checked = d.rewardsEnabled  !== false;
+    document.getElementById('ref-referrer-reward').value  = d.referrerReward   ?? 50;
+    document.getElementById('ref-referred-reward').value  = d.referredReward   ?? 25;
+    document.getElementById('ref-trigger').value          = d.rewardTriggerCondition ?? 'on_signup';
+    document.getElementById('ref-max-limit').value        = d.maxReferralLimit  ?? 0;
+    document.getElementById('ref-campaign-title').value   = d.campaignTitle    ?? 'Refer & Earn';
+    document.getElementById('ref-campaign-message').value = d.campaignMessage  ?? '';
+    document.getElementById('ref-banner-text').value      = d.bannerText       ?? '';
+
+    if (d.offerExpiryDate) {
+      const dt = d.offerExpiryDate.toDate ? d.offerExpiryDate.toDate() : new Date(d.offerExpiryDate);
+      const iso = dt.toISOString().slice(0, 16);
+      document.getElementById('ref-expiry-date').value = iso;
+    }
+  } catch (err) {
+    console.error('loadReferralSettings error', err);
+  }
+}
+
+// ---- Save settings to Firestore ----
+async function saveReferralSettings() {
+  const btn = document.getElementById('save-referral-btn');
+  const status = document.getElementById('ref-save-status');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Saving…';
+  status.textContent = '';
+
+  const referrerReward = parseFloat(document.getElementById('ref-referrer-reward').value) || 0;
+  const referredReward = parseFloat(document.getElementById('ref-referred-reward').value) || 0;
+
+  if (referrerReward < 0 || referredReward < 0) {
+    showToast('Reward amounts must be non-negative.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-device-floppy"></i> Save Settings';
+    return;
+  }
+
+  const expiryRaw = document.getElementById('ref-expiry-date').value;
+  const expiryDate = expiryRaw ? firebase.firestore.Timestamp.fromDate(new Date(expiryRaw)) : null;
+
+  const payload = {
+    referralEnabled:        document.getElementById('ref-enabled').checked,
+    rewardsEnabled:         document.getElementById('ref-rewards-enabled').checked,
+    referrerReward,
+    referredReward,
+    rewardTriggerCondition: document.getElementById('ref-trigger').value,
+    maxReferralLimit:       parseInt(document.getElementById('ref-max-limit').value) || 0,
+    campaignTitle:          document.getElementById('ref-campaign-title').value.trim(),
+    campaignMessage:        document.getElementById('ref-campaign-message').value.trim(),
+    bannerText:             document.getElementById('ref-banner-text').value.trim(),
+    offerExpiryDate:        expiryDate,
+    updatedAt:              firebase.firestore.FieldValue.serverTimestamp(),
+    updatedBy:              auth.currentUser?.email || 'admin',
+  };
+
+  try {
+    await db.collection('referralConfig').doc('settings').set(payload, { merge: true });
+    status.textContent = '✓ Saved ' + new Date().toLocaleTimeString();
+    showToast('Referral settings saved ✓');
+  } catch (err) {
+    showToast('Save failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-device-floppy"></i> Save Settings';
+  }
+}
+
+// ---- Load referral stats ----
+async function loadReferralStats() {
+  try {
+    const snap = await db.collection('referrals').get();
+    let total = 0, rewarded = 0, pending = 0, totalRewards = 0;
+    snap.forEach(doc => {
+      const d = doc.data();
+      total++;
+      if (d.status === 'rewarded') {
+        rewarded++;
+        totalRewards += (d.referrerRewardAmount || 0) + (d.referredRewardAmount || 0);
+      } else if (d.status === 'pending') {
+        pending++;
+      }
+    });
+    document.getElementById('ref-stat-total').textContent    = total.toLocaleString();
+    document.getElementById('ref-stat-rewarded').textContent = rewarded.toLocaleString();
+    document.getElementById('ref-stat-pending').textContent  = pending.toLocaleString();
+    document.getElementById('ref-stat-rewards').textContent  = '₹' + totalRewards.toLocaleString('en-IN');
+  } catch (err) {
+    console.error('loadReferralStats error', err);
+  }
+}
+
+// ---- Load referrals list ----
+async function loadReferrals() {
+  document.getElementById('referrals-tbody').innerHTML =
+    '<tr><td colspan="7" class="loading">Loading referrals...</td></tr>';
+  try {
+    const snap = await db.collection('referrals').orderBy('createdAt', 'desc').limit(200).get();
+    _allReferrals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderReferrals(_allReferrals);
+  } catch (err) {
+    document.getElementById('referrals-tbody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;color:var(--danger);">Failed to load: ${err.message}</td></tr>`;
+  }
+}
+
+function filterReferrals() {
+  const filter = document.getElementById('ref-filter').value;
+  const filtered = filter === 'all'
+    ? _allReferrals
+    : _allReferrals.filter(r => r.status === filter);
+  renderReferrals(filtered);
+}
+
+function renderReferrals(list) {
+  const tbody = document.getElementById('referrals-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No referrals found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(r => {
+    const date = r.createdAt?.toDate
+      ? r.createdAt.toDate().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+    const statusBadge = r.status === 'rewarded'
+      ? '<span class="badge badge-green">Rewarded</span>'
+      : '<span class="badge badge-yellow">Pending</span>';
+    return `<tr>
+      <td>${r.referrerName || r.referrerId?.slice(0,8) || '—'}</td>
+      <td>${r.referredUserId?.slice(0,8) || '—'}</td>
+      <td><code>${r.referralCode || '—'}</code></td>
+      <td>₹${(r.referrerRewardAmount || 0).toLocaleString('en-IN')}</td>
+      <td>₹${(r.referredRewardAmount || 0).toLocaleString('en-IN')}</td>
+      <td>${statusBadge}</td>
+      <td>${date}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================
+//   PATIENT FEEDBACK
+// ============================================
+let allFeedbacks = [];
+
+async function loadFeedbacks() {
+  try {
+    const snap = await db.collection('feedbacks').orderBy('createdAt', 'desc').get();
+    allFeedbacks = [];
+    snap.forEach(doc => allFeedbacks.push({ id: doc.id, ...doc.data() }));
+
+    // Summary stats
+    const total     = allFeedbacks.length;
+    const immediate = allFeedbacks.filter(f => f.type === 'immediate').length;
+    const followup  = allFeedbacks.filter(f => f.type === 'followup').length;
+    const ratings   = allFeedbacks.map(f => f.rating || 0).filter(r => r > 0);
+    const avg       = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '—';
+
+    document.getElementById('fb-avg-rating').textContent  = avg === '—' ? '—' : `${avg} ⭐`;
+    document.getElementById('fb-total').textContent       = total.toLocaleString();
+    document.getElementById('fb-immediate').textContent   = immediate.toLocaleString();
+    document.getElementById('fb-followup').textContent    = followup.toLocaleString();
+
+    // Update sidebar badge
+    if (total > 0) {
+      const badge = document.getElementById('nav-feedback-count');
+      badge.textContent = total;
+      badge.style.display = 'inline-flex';
+    }
+
+    renderFeedbackTable(allFeedbacks);
+  } catch (err) {
+    console.error('Feedback load error:', err);
+  }
+}
+
+function filterFeedback() {
+  const type   = document.getElementById('fb-type-filter').value;
+  const rating = document.getElementById('fb-rating-filter').value;
+  const q      = (document.getElementById('fb-search').value || '').toLowerCase();
+
+  let list = [...allFeedbacks];
+
+  if (type !== 'all')   list = list.filter(f => f.type === type);
+  if (rating !== 'all') list = list.filter(f => (f.rating || 0) === parseInt(rating));
+  if (q) list = list.filter(f =>
+    (f.patientName || '').toLowerCase().includes(q) ||
+    (f.doctorName  || '').toLowerCase().includes(q) ||
+    (f.comment     || '').toLowerCase().includes(q)
+  );
+
+  renderFeedbackTable(list);
+}
+
+function renderFeedbackTable(list) {
+  const tbody = document.getElementById('feedback-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">No feedback found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(f => {
+    // Stars HTML
+    const stars = Array.from({ length: 5 }, (_, i) =>
+      `<span style="color:${i < (f.rating || 0) ? '#ffa000' : '#ddd'};font-size:13px;">★</span>`
+    ).join('');
+
+    // Feeling badge color
+    const feelingColor = {
+      'Much Better': '#2e7d32', 'Better': '#66bb6a',
+      'Same': '#e65100',        'Worse':  '#b71c1c',
+    }[f.feeling] || '#888';
+    const feelingHtml = f.feeling
+      ? `<span style="background:${feelingColor}20;color:${feelingColor};padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;">${f.feeling}</span>`
+      : '—';
+
+    // Type badge
+    const typeHtml = f.type === 'immediate'
+      ? '<span class="pill" style="background:#e3f2fd;color:#1565c0;">Immediate</span>'
+      : '<span class="pill" style="background:#f3e5f5;color:#7b1fa2;">Follow-up</span>';
+
+    const date = f.createdAt
+      ? f.createdAt.toDate().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+
+    const comment = f.comment
+      ? `<span title="${f.comment.replace(/"/g, '&quot;')}" style="cursor:help;">${f.comment.length > 35 ? f.comment.slice(0, 35) + '…' : f.comment}</span>`
+      : '<span style="color:#aaa;">—</span>';
+
+    return `<tr>
+      <td><div class="user-name">${f.patientName || '—'}</div></td>
+      <td><div class="user-sub">${f.doctorName || '—'}</div></td>
+      <td>${typeHtml}</td>
+      <td>${f.rating > 0 ? stars : '<span style="color:#aaa;">No rating</span>'}</td>
+      <td>${feelingHtml}</td>
+      <td>${f.painLevel > 0 ? `<b>${f.painLevel}</b>/10` : '0/10'}</td>
+      <td style="max-width:200px;">${comment}</td>
+      <td style="white-space:nowrap;">${date}</td>
+    </tr>`;
+  }).join('');
 }

@@ -75,6 +75,9 @@
         <i class="ti ti-speakerphone nav-icon" aria-hidden="true"></i> Banners
         <span class="nav-badge nav-badge-green" id="nav-banner-count" style="display:none;">0</span>
       </div>
+      <div class="nav-item" data-tab="referrals" data-title="Referral Settings">
+        <i class="ti ti-share nav-icon" aria-hidden="true"></i> Referrals
+      </div>
       <div class="nav-section-label">Emergency</div>
       <div class="nav-item" data-tab="hospitals" data-title="Hospitals">
         <i class="ti ti-building-hospital nav-icon" aria-hidden="true"></i> Hospitals
@@ -83,6 +86,16 @@
       <div class="nav-item" data-tab="ambulances" data-title="Ambulances">
         <i class="ti ti-ambulance nav-icon" aria-hidden="true"></i> Ambulances
         <span class="nav-badge nav-badge-green" id="nav-ambulance-count" style="display:none;">0</span>
+      </div>
+      <div class="nav-section-label">Quality</div>
+      <div class="nav-item" data-tab="feedback" data-title="Patient Feedback">
+        <i class="ti ti-star nav-icon" aria-hidden="true"></i> Feedback
+        <span class="nav-badge nav-badge-green" id="nav-feedback-count" style="display:none;">0</span>
+      </div>
+      <div class="nav-section-label">Services</div>
+      <div class="nav-item" data-tab="requests" data-title="Service Requests">
+        <i class="ti ti-clipboard-list nav-icon" aria-hidden="true"></i> Requests
+        <span class="nav-badge nav-badge-red" id="nav-requests-count" style="display:none;">0</span>
       </div>
       <div class="nav-section-label">Support</div>
       <div class="nav-item" data-tab="reports" data-title="Reports">
@@ -115,10 +128,22 @@
         <div class="page-sub" id="page-sub"></div>
       </div>
       <div class="topbar-right">
-        <button class="topbar-btn notif-dot">
-          <i class="ti ti-bell" aria-hidden="true"></i>
-        </button>
-        <button class="topbar-btn">
+        <div class="notif-wrapper" id="notif-wrapper">
+          <button class="topbar-btn" id="notif-btn" onclick="toggleNotifPanel()" title="Notifications">
+            <i class="ti ti-bell" aria-hidden="true"></i>
+            <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+          </button>
+          <div class="notif-panel" id="notif-panel" style="display:none;">
+            <div class="notif-panel-header">
+              <span class="notif-panel-title">Notifications</span>
+              <button class="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
+            </div>
+            <div id="notif-list" class="notif-list">
+              <div class="notif-empty">No notifications yet</div>
+            </div>
+          </div>
+        </div>
+        <button class="topbar-btn" onclick="initDashboard()">
           <i class="ti ti-refresh" aria-hidden="true"></i> Refresh
         </button>
       </div>
@@ -413,6 +438,80 @@
 
       </div>
 
+      <!-- ===== FEEDBACK TAB ===== -->
+      <div id="tab-feedback" class="tab-section">
+
+        <!-- Summary stats -->
+        <div class="metrics-grid" style="margin-bottom:16px;" id="feedback-stats">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fff8e1;color:#ffa000;"><i class="ti ti-star"></i></div>
+            <div class="metric-label">Avg Rating</div>
+            <div class="metric-value" id="fb-avg-rating">—</div>
+            <div class="metric-change change-up">Out of 5</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="ti ti-message-circle"></i></div>
+            <div class="metric-label">Total Feedback</div>
+            <div class="metric-value" id="fb-total">—</div>
+            <div class="metric-change change-up">All time</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e3f2fd;color:#1565c0;"><i class="ti ti-activity"></i></div>
+            <div class="metric-label">Immediate</div>
+            <div class="metric-value" id="fb-immediate">—</div>
+            <div class="metric-change">Post-call ratings</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fce4ec;color:#c62828;"><i class="ti ti-heart-rate-monitor"></i></div>
+            <div class="metric-label">Follow-ups</div>
+            <div class="metric-value" id="fb-followup">—</div>
+            <div class="metric-change">Health updates</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Patient Feedback</span>
+            <div style="display:flex;gap:8px;">
+              <select id="fb-type-filter" class="filter-select" onchange="filterFeedback()">
+                <option value="all">All types</option>
+                <option value="immediate">Immediate</option>
+                <option value="followup">Follow-up</option>
+              </select>
+              <select id="fb-rating-filter" class="filter-select" onchange="filterFeedback()">
+                <option value="all">All ratings</option>
+                <option value="5">5 stars</option>
+                <option value="4">4 stars</option>
+                <option value="3">3 stars</option>
+                <option value="2">2 stars</option>
+                <option value="1">1 star</option>
+                <option value="0">No rating</option>
+              </select>
+              <input id="fb-search" type="text" class="search-input" placeholder="Search patient or doctor..." oninput="filterFeedback()" />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Doctor</th>
+                  <th>Type</th>
+                  <th>Rating</th>
+                  <th>Feeling</th>
+                  <th>Pain</th>
+                  <th>Comment</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="feedback-tbody">
+                <tr><td colspan="8" class="loading">Loading feedback...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ===== TICKETS TAB ===== -->
       <div id="tab-tickets" class="tab-section">
         <div class="card">
@@ -567,6 +666,235 @@
           <div id="ambulances-list"><div class="loading">Loading ambulance services…</div></div>
         </div>
       </div>
+
+      <!-- ===== REFERRALS TAB ===== -->
+      <div id="tab-referrals" class="tab-section">
+
+        <!-- Stats Row -->
+        <div class="metrics-grid" style="margin-bottom:16px;" id="referral-stats-row">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e8f0fe;color:#1a73e8;"><i class="ti ti-users"></i></div>
+            <div class="metric-label">Total Referrals</div>
+            <div class="metric-value" id="ref-stat-total">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e6f4ea;color:#1e8e3e;"><i class="ti ti-rosette-discount-check"></i></div>
+            <div class="metric-label">Rewarded</div>
+            <div class="metric-value" id="ref-stat-rewarded">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fef7e0;color:#f29900;"><i class="ti ti-clock"></i></div>
+            <div class="metric-label">Pending</div>
+            <div class="metric-value" id="ref-stat-pending">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fce8e6;color:#d93025;"><i class="ti ti-currency-rupee"></i></div>
+            <div class="metric-label">Total Rewards Given</div>
+            <div class="metric-value" id="ref-stat-rewards">—</div>
+          </div>
+        </div>
+
+        <!-- Referral Settings Form -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title">Referral Campaign Settings</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span id="ref-save-status" style="font-size:12px;color:var(--text-muted);"></span>
+              <button class="btn-publish" id="save-referral-btn" onclick="saveReferralSettings()" style="height:36px;padding:0 16px;">
+                <i class="ti ti-device-floppy"></i> Save Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Enable / Disable toggles -->
+          <div style="display:flex;gap:24px;flex-wrap:wrap;padding:12px 0 16px;">
+            <label class="toggle-label">
+              <input type="checkbox" id="ref-enabled" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Referral System Enabled</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="ref-rewards-enabled" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Referral Rewards Enabled</span>
+            </label>
+          </div>
+
+          <div class="banner-form-grid">
+            <!-- Reward amounts -->
+            <div class="form-group">
+              <label class="form-label">Referrer Reward (₹) <span style="color:var(--danger)">*</span></label>
+              <input id="ref-referrer-reward" type="number" min="0" step="1" class="form-input" placeholder="e.g. 50" />
+              <small class="form-hint">Amount credited to user who shared the code</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New User Reward (₹) <span style="color:var(--danger)">*</span></label>
+              <input id="ref-referred-reward" type="number" min="0" step="1" class="form-input" placeholder="e.g. 25" />
+              <small class="form-hint">Welcome bonus for new user who used the code</small>
+            </div>
+
+            <!-- Trigger condition -->
+            <div class="form-group">
+              <label class="form-label">Reward Trigger</label>
+              <select id="ref-trigger" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                <option value="on_signup">On Signup</option>
+                <option value="after_first_appointment">After First Appointment</option>
+                <option value="after_first_payment">After First Payment</option>
+                <option value="after_first_consultation">After First Consultation</option>
+                <option value="after_account_verification">After Account Verification</option>
+              </select>
+            </div>
+
+            <!-- Max referrals per user -->
+            <div class="form-group">
+              <label class="form-label">Max Referrals per User <span class="form-hint">(0 = unlimited)</span></label>
+              <input id="ref-max-limit" type="number" min="0" step="1" class="form-input" placeholder="0" />
+            </div>
+
+            <!-- Campaign title -->
+            <div class="form-group">
+              <label class="form-label">Campaign Title</label>
+              <input id="ref-campaign-title" type="text" class="form-input" placeholder="e.g. Refer & Earn" maxlength="60" />
+            </div>
+
+            <!-- Banner text -->
+            <div class="form-group">
+              <label class="form-label">App Banner Text</label>
+              <input id="ref-banner-text" type="text" class="form-input" placeholder="e.g. Share & earn ₹50 per referral" maxlength="80" />
+            </div>
+
+            <!-- Campaign message -->
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">Campaign Message</label>
+              <input id="ref-campaign-message" type="text" class="form-input" placeholder="e.g. Invite friends to MedNu and earn rewards!" maxlength="140" />
+              <small class="form-hint">Shown in the share sheet inside the app</small>
+            </div>
+
+            <!-- Offer expiry -->
+            <div class="form-group">
+              <label class="form-label">Offer Expiry Date <span class="form-hint">(optional)</span></label>
+              <input id="ref-expiry-date" type="datetime-local" class="form-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral History Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Referral History</span>
+            <select id="ref-filter" class="filter-select" onchange="filterReferrals()">
+              <option value="all">All</option>
+              <option value="rewarded">Rewarded</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Referrer</th>
+                  <th>New User</th>
+                  <th>Code</th>
+                  <th>Referrer Reward</th>
+                  <th>User Reward</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="referrals-tbody">
+                <tr><td colspan="7" class="loading">Loading referrals...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===== REQUESTS TAB ===== -->
+      <div id="tab-requests" class="tab-section">
+
+        <!-- Stats row -->
+        <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;">
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#fff3e0;color:#e65100;width:40px;height:40px;font-size:18px;"><i class="ti ti-clock"></i></div>
+            <div class="metric-label">Pending</div>
+            <div class="metric-value" id="req-stat-pending" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#e8f5e9;color:#2e7d32;width:40px;height:40px;font-size:18px;"><i class="ti ti-check"></i></div>
+            <div class="metric-label">Accepted</div>
+            <div class="metric-value" id="req-stat-accepted" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#e3f2fd;color:#1565c0;width:40px;height:40px;font-size:18px;"><i class="ti ti-trending-up"></i></div>
+            <div class="metric-label">In Progress</div>
+            <div class="metric-value" id="req-stat-inprogress" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#e8f0fe;color:#1a73e8;width:40px;height:40px;font-size:18px;"><i class="ti ti-checks"></i></div>
+            <div class="metric-label">Completed</div>
+            <div class="metric-value" id="req-stat-completed" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#fce8e6;color:#c62828;width:40px;height:40px;font-size:18px;"><i class="ti ti-x"></i></div>
+            <div class="metric-label">Rejected</div>
+            <div class="metric-value" id="req-stat-rejected" style="font-size:24px;">—</div>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-right:4px;">Filter:</span>
+            <button class="req-filter-btn active" onclick="filterRequests('all',this)">All</button>
+            <button class="req-filter-btn" onclick="filterRequests('diagnostics',this)">Diagnostics</button>
+            <button class="req-filter-btn" onclick="filterRequests('care_assistant',this)">Care Assistant</button>
+            <button class="req-filter-btn" onclick="filterRequests('physiotherapy',this)">Physiotherapy</button>
+            <button class="req-filter-btn" onclick="filterRequests('equipment',this)">Equipment</button>
+            <button class="req-filter-btn" onclick="filterRequests('caregivers',this)">Caregivers</button>
+            <div style="flex:1;"></div>
+            <select id="req-status-filter" class="filter-select" onchange="applyRequestFilters()" style="min-width:130px;">
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="accepted">Accepted</option>
+              <option value="assigned">Assigned</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <input id="req-search" type="text" class="form-input" placeholder="Search patient..." style="width:180px;padding:8px 12px;" oninput="applyRequestFilters()" />
+          </div>
+        </div>
+
+        <!-- Requests table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Service Requests</span>
+            <span id="req-count-label" style="font-size:13px;color:var(--text-secondary);">Loading...</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Service</th>
+                  <th>Type</th>
+                  <th>Date / Time</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th>Received</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requests-tbody">
+                <tr><td colspan="8" class="loading">Loading requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-requests -->
 
     </div><!-- /content -->
   </div><!-- /main -->
