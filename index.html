@@ -43,8 +43,11 @@
 <!-- ===== MAIN APP ===== -->
 <div id="app" class="app" style="display:none;">
 
+  <!-- Mobile Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon">M</div>
       <div>
@@ -63,12 +66,20 @@
       <div class="nav-item" data-tab="patients" data-title="Patients">
         <i class="ti ti-users nav-icon" aria-hidden="true"></i> Patients
       </div>
+      <div class="nav-item" data-tab="appointments" data-title="Appointments">
+        <i class="ti ti-calendar nav-icon" aria-hidden="true"></i> Appointments
+        <span class="nav-badge nav-badge-red" id="nav-appt-count" style="display:none;">0</span>
+      </div>
       <div class="nav-section-label">Finance</div>
       <div class="nav-item" data-tab="revenue" data-title="Revenue">
         <i class="ti ti-chart-bar nav-icon" aria-hidden="true"></i> Revenue
       </div>
       <div class="nav-item" data-tab="medicines" data-title="Medicines">
         <i class="ti ti-pill nav-icon" aria-hidden="true"></i> Medicines
+      </div>
+      <div class="nav-item" data-tab="wallet" data-title="Wallet &amp; Transactions">
+        <i class="ti ti-wallet nav-icon" aria-hidden="true"></i> Wallet
+        <span class="nav-badge nav-badge-red" id="nav-wallet-count" style="display:none;">0</span>
       </div>
       <div class="nav-section-label">Marketing</div>
       <div class="nav-item" data-tab="banners" data-title="Promotional Banners">
@@ -93,6 +104,10 @@
         <span class="nav-badge nav-badge-green" id="nav-feedback-count" style="display:none;">0</span>
       </div>
       <div class="nav-section-label">Services</div>
+      <div class="nav-item" data-tab="services" data-title="Services Management">
+        <i class="ti ti-tools nav-icon" aria-hidden="true"></i> Services
+        <span class="nav-badge nav-badge-green" id="nav-services-count" style="display:none;">0</span>
+      </div>
       <div class="nav-item" data-tab="requests" data-title="Service Requests">
         <i class="ti ti-clipboard-list nav-icon" aria-hidden="true"></i> Requests
         <span class="nav-badge nav-badge-red" id="nav-requests-count" style="display:none;">0</span>
@@ -104,6 +119,9 @@
       <div class="nav-item" data-tab="tickets" data-title="Support Tickets">
         <i class="ti ti-headset nav-icon" aria-hidden="true"></i> Support
         <span class="nav-badge" id="nav-ticket-count">0</span>
+      </div>
+      <div class="nav-item" data-tab="broadcast" data-title="Broadcast Notifications">
+        <i class="ti ti-send nav-icon" aria-hidden="true"></i> Broadcast
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -124,6 +142,9 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle menu">
+          <i class="ti ti-menu-2"></i>
+        </button>
         <div class="page-title" id="page-title">Overview</div>
         <div class="page-sub" id="page-sub"></div>
       </div>
@@ -895,6 +916,361 @@
         </div>
 
       </div><!-- /tab-requests -->
+
+      <!-- ===== SERVICES MANAGEMENT TAB ===== -->
+      <div id="tab-services" class="tab-section">
+
+        <!-- Add / Edit Service Form -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title" id="service-form-title">Add Service</span>
+            <button class="btn btn-outline" id="cancel-service-btn" style="display:none;" onclick="cancelServiceEdit()">
+              <i class="ti ti-x"></i> Cancel
+            </button>
+          </div>
+
+          <div class="banner-upload-zone" id="service-upload-zone" onclick="document.getElementById('service-file-input').click()" role="button" tabindex="0" aria-label="Click to upload service image">
+            <div class="banner-upload-placeholder" id="service-upload-placeholder">
+              <i class="ti ti-photo-plus"></i>
+              <p>Click to upload service image</p>
+              <small>JPG, PNG, WebP · Max 5 MB</small>
+            </div>
+            <img id="service-preview-img" style="display:none;" alt="Service preview" />
+          </div>
+          <input type="file" id="service-file-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewServiceImage(event)" />
+
+          <div class="banner-form-grid">
+            <div class="form-group">
+              <label class="form-label">Service Name <span style="color:var(--danger)">*</span></label>
+              <input id="svc-name" type="text" class="form-input" placeholder="e.g. Blood Test at Home" maxlength="100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category <span style="color:var(--danger)">*</span></label>
+              <select id="svc-type" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                <option value="diagnostics">Diagnostics</option>
+                <option value="lab_tests">Lab Tests</option>
+                <option value="physiotherapy">Physiotherapy</option>
+                <option value="care_assistant">Care Assistant</option>
+                <option value="caregivers">Caregivers</option>
+                <option value="equipment">Medical Equipment</option>
+                <option value="consultation">Consultation</option>
+                <option value="nutrition">Nutrition</option>
+                <option value="counselling">Counselling</option>
+                <option value="medicine_delivery">Medicine Delivery</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price (₹)</label>
+              <input id="svc-price" type="number" min="0" step="1" class="form-input" placeholder="e.g. 499" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price Unit</label>
+              <select id="svc-price-unit" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                <option value="per_session">Per Session</option>
+                <option value="per_hour">Per Hour</option>
+                <option value="per_day">Per Day</option>
+                <option value="per_month">Per Month</option>
+                <option value="onwards">Onwards</option>
+                <option value="free">Free</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration / Timeline <span class="form-hint">(optional)</span></label>
+              <input id="svc-duration" type="text" class="form-input" placeholder="e.g. 30-60 min" maxlength="50" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Short Description <span class="form-hint">(optional)</span></label>
+              <input id="svc-desc" type="text" class="form-input" placeholder="Brief service description" maxlength="200" />
+            </div>
+          </div>
+
+          <div class="banner-form-footer">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;flex:1;">
+              <label class="toggle-label">
+                <input type="checkbox" id="svc-enabled" checked />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Visible in app</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="svc-featured" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">Featured</span>
+              </label>
+            </div>
+            <div id="service-upload-progress" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+              <div class="upload-spinner"></div> Uploading…
+            </div>
+            <button id="save-service-btn" class="btn-publish" onclick="saveService()">
+              <i class="ti ti-device-floppy"></i> Save Service
+            </button>
+          </div>
+        </div>
+
+        <!-- Services List -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Services</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="service-search" type="text" class="search-input" placeholder="Search services…" oninput="filterServices()" />
+              <select id="service-type-filter" class="filter-select" onchange="filterServices()">
+                <option value="all">All categories</option>
+                <option value="diagnostics">Diagnostics</option>
+                <option value="lab_tests">Lab Tests</option>
+                <option value="physiotherapy">Physiotherapy</option>
+                <option value="care_assistant">Care Assistant</option>
+                <option value="caregivers">Caregivers</option>
+                <option value="equipment">Medical Equipment</option>
+                <option value="consultation">Consultation</option>
+                <option value="nutrition">Nutrition</option>
+                <option value="counselling">Counselling</option>
+                <option value="medicine_delivery">Medicine Delivery</option>
+              </select>
+            </div>
+          </div>
+          <div id="services-list"><div class="loading">Loading services…</div></div>
+        </div>
+
+      </div><!-- /tab-services -->
+
+      <!-- ===== APPOINTMENTS TAB ===== -->
+      <div id="tab-appointments" class="tab-section">
+
+        <!-- Stats Row -->
+        <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;">
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#fff3e0;color:#e65100;width:40px;height:40px;font-size:18px;"><i class="ti ti-clock"></i></div>
+            <div class="metric-label">Pending</div>
+            <div class="metric-value" id="appt-stat-pending" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#e3f2fd;color:#1565c0;width:40px;height:40px;font-size:18px;"><i class="ti ti-check"></i></div>
+            <div class="metric-label">Confirmed</div>
+            <div class="metric-value" id="appt-stat-confirmed" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#e8f5e9;color:#2e7d32;width:40px;height:40px;font-size:18px;"><i class="ti ti-checks"></i></div>
+            <div class="metric-label">Completed</div>
+            <div class="metric-value" id="appt-stat-completed" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#fce8e6;color:#c62828;width:40px;height:40px;font-size:18px;"><i class="ti ti-x"></i></div>
+            <div class="metric-label">Cancelled</div>
+            <div class="metric-value" id="appt-stat-cancelled" style="font-size:24px;">—</div>
+          </div>
+          <div class="metric-card" style="padding:16px;">
+            <div class="metric-icon" style="background:#f3e8fd;color:#6a1b9a;width:40px;height:40px;font-size:18px;"><i class="ti ti-calendar-event"></i></div>
+            <div class="metric-label">Today</div>
+            <div class="metric-value" id="appt-stat-today" style="font-size:24px;">—</div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input id="appt-search" type="text" class="search-input" placeholder="Search patient or doctor…" oninput="applyApptFilters()" />
+            <select id="appt-status-filter" class="filter-select" onchange="applyApptFilters()">
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="no_show">No Show</option>
+            </select>
+            <select id="appt-date-filter" class="filter-select" onchange="applyApptFilters()">
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Appointments Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Appointments</span>
+            <span id="appt-count-label" style="font-size:13px;color:var(--text-secondary);">Loading…</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Doctor</th>
+                  <th>Date &amp; Time</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Booked On</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="appointments-tbody">
+                <tr><td colspan="7" class="loading">Loading appointments…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-appointments -->
+
+      <!-- ===== WALLET & TRANSACTIONS TAB ===== -->
+      <div id="tab-wallet" class="tab-section">
+
+        <!-- Stats Row -->
+        <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="ti ti-trending-up"></i></div>
+            <div class="metric-label">Total Credits</div>
+            <div class="metric-value" id="wallet-stat-credits">—</div>
+            <div class="metric-change change-up">All time</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fce8e6;color:#c62828;"><i class="ti ti-trending-down"></i></div>
+            <div class="metric-label">Total Debits</div>
+            <div class="metric-value" id="wallet-stat-debits">—</div>
+            <div class="metric-change change-down">All time</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fff3e0;color:#e65100;"><i class="ti ti-clock"></i></div>
+            <div class="metric-label">Pending Refunds</div>
+            <div class="metric-value" id="wallet-stat-refunds">—</div>
+            <div class="metric-change">Awaiting action</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#f3e8fd;color:#6a1b9a;"><i class="ti ti-coin"></i></div>
+            <div class="metric-label">Referral Rewards</div>
+            <div class="metric-value" id="wallet-stat-referral">—</div>
+            <div class="metric-change change-up">Total given</div>
+          </div>
+        </div>
+
+        <!-- Add Credits Form -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <span class="card-title">Add Wallet Credits to User</span>
+          </div>
+          <div class="banner-form-grid">
+            <div class="form-group">
+              <label class="form-label">User Phone / ID <span style="color:var(--danger)">*</span></label>
+              <input id="credit-user-search" type="text" class="form-input" placeholder="Search user by phone or name…" oninput="searchWalletUser()" />
+              <div id="wallet-user-suggestions" style="position:relative;"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Selected User</label>
+              <div id="wallet-selected-user" style="padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-muted);min-height:42px;">No user selected</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount (₹) <span style="color:var(--danger)">*</span></label>
+              <input id="credit-amount" type="number" min="1" step="1" class="form-input" placeholder="e.g. 100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Reason</label>
+              <input id="credit-reason" type="text" class="form-input" placeholder="e.g. Referral reward, Refund" maxlength="100" />
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);">
+            <button class="btn-publish" onclick="addWalletCredit()">
+              <i class="ti ti-plus"></i> Add Credits
+            </button>
+          </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">All Wallet Transactions</span>
+            <div style="display:flex;gap:8px;">
+              <input id="wallet-search" type="text" class="search-input" placeholder="Search user…" oninput="filterWalletTx()" />
+              <select id="wallet-type-filter" class="filter-select" onchange="filterWalletTx()">
+                <option value="all">All types</option>
+                <option value="credit">Credits</option>
+                <option value="debit">Debits</option>
+                <option value="refund">Refunds</option>
+                <option value="referral">Referral</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Amount</th>
+                  <th>Type</th>
+                  <th>Reason</th>
+                  <th>Balance After</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="wallet-tbody">
+                <tr><td colspan="6" class="loading">Loading transactions…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-wallet -->
+
+      <!-- ===== BROADCAST NOTIFICATIONS TAB ===== -->
+      <div id="tab-broadcast" class="tab-section">
+
+        <div class="grid-2" style="margin-bottom:16px;">
+          <!-- Send Notification Form -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Send Notification</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Audience <span style="color:var(--danger)">*</span></label>
+              <select id="notif-target" class="filter-select" style="width:100%;padding:10px 12px;height:auto;" onchange="toggleSpecificUser()">
+                <option value="all_patients">All Patients</option>
+                <option value="all_doctors">All Doctors</option>
+                <option value="all_users">Everyone (Patients + Doctors)</option>
+                <option value="specific_user">Specific User</option>
+              </select>
+            </div>
+            <div id="specific-user-row" class="form-group" style="display:none;">
+              <label class="form-label">User ID or Phone</label>
+              <input id="notif-user-id" type="text" class="form-input" placeholder="Enter user UID or phone number" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notification Type</label>
+              <select id="notif-type" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                <option value="general">General Announcement</option>
+                <option value="offer">Special Offer</option>
+                <option value="alert">Health Alert</option>
+                <option value="update">App Update</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
+              <input id="notif-title" type="text" class="form-input" placeholder="Notification title" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Message <span style="color:var(--danger)">*</span></label>
+              <textarea id="notif-body" class="form-input" placeholder="Notification message body…" maxlength="300" rows="4" style="resize:vertical;min-height:90px;"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deep Link / Route <span class="form-hint">(optional)</span></label>
+              <input id="notif-link" type="text" class="form-input" placeholder="e.g. /appointments or /offers" maxlength="100" />
+            </div>
+            <button class="btn-publish" onclick="sendBroadcast()" style="width:100%;justify-content:center;margin-top:4px;">
+              <i class="ti ti-send"></i> Send Notification
+            </button>
+          </div>
+
+          <!-- Recent Broadcasts -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Sent Notifications</span>
+              <span style="font-size:12px;color:var(--text-muted);">Last 20</span>
+            </div>
+            <div id="broadcasts-list"><div class="loading">Loading…</div></div>
+          </div>
+        </div>
+
+      </div><!-- /tab-broadcast -->
 
     </div><!-- /content -->
   </div><!-- /main -->
