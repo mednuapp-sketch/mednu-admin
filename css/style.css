@@ -1,28 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Sora:wght@400;600&display=swap');
 
 :root {
-  --primary: #1a73e8;
-  --primary-light: #e8f0fe;
-  --primary-dark: #1557b0;
-  --success: #1e8e3e;
-  --success-light: #e6f4ea;
-  --warning: #f29900;
-  --warning-light: #fef7e0;
-  --danger: #d93025;
-  --danger-light: #fce8e6;
-  --info: #1a73e8;
-  --info-light: #e8f0fe;
-  --bg: #f8f9fc;
-  --sidebar-bg: #0f1724;
+  /* MedNu Brand Colors */
+  --primary: #C2185B;
+  --primary-light: #FCE4EC;
+  --primary-dark: #880E4F;
+  --secondary: #7B1FA2;
+  --secondary-light: #F3E5F5;
+  --success: #2E7D32;
+  --success-light: #E8F5E9;
+  --warning: #F57F17;
+  --warning-light: #FFF8E1;
+  --danger: #C62828;
+  --danger-light: #FFEBEE;
+  --info: #1565C0;
+  --info-light: #E3F2FD;
+  --bg: #F7F4F8;
+  --sidebar-bg: #060C18;
   --sidebar-text: #9aa5b4;
   --sidebar-active: #ffffff;
   --card-bg: #ffffff;
-  --text-primary: #1a1f36;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border: #e5e7eb;
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  --text-primary: #1A1A2E;
+  --text-secondary: #616161;
+  --text-muted: #BDBDBD;
+  --border: #E0E0E0;
+  --shadow: 0 1px 3px rgba(194,24,91,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(194,24,91,0.08), 0 2px 4px rgba(0,0,0,0.04);
   --radius: 10px;
   --radius-sm: 6px;
   --font: 'DM Sans', sans-serif;
@@ -53,7 +56,7 @@ input, select { font-family: var(--font); }
 }
 .logo-icon {
   width: 34px; height: 34px; border-radius: 9px;
-  background: linear-gradient(135deg, #1a73e8, #0d47a1);
+  background: linear-gradient(135deg, #C2185B, #7B1FA2);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: #fff; font-family: var(--font-display); font-weight: 600;
 }
@@ -71,7 +74,7 @@ input, select { font-family: var(--font); }
   position: relative; border-left: 3px solid transparent;
 }
 .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.nav-item.active { background: rgba(26,115,232,0.15); color: #fff; border-left-color: #1a73e8; }
+.nav-item.active { background: rgba(194,24,91,0.18); color: #fff; border-left-color: #C2185B; }
 .nav-item .nav-icon { font-size: 17px; width: 20px; text-align: center; }
 .nav-badge {
   margin-left: auto; background: #d93025; color: #fff;
@@ -84,7 +87,7 @@ input, select { font-family: var(--font); }
 .admin-info { display: flex; align-items: center; gap: 10px; }
 .admin-avatar {
   width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, #1a73e8, #0d47a1);
+  background: linear-gradient(135deg, #C2185B, #7B1FA2);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; color: #fff;
 }
@@ -125,7 +128,8 @@ input, select { font-family: var(--font); }
 
 /* ---- LOGIN PAGE ---- */
 .login-page {
-  min-height: 100vh; background: var(--sidebar-bg);
+  min-height: 100vh;
+  background: linear-gradient(135deg, #060C18 0%, #0D1525 50%, #1A0A1E 100%);
   display: flex; align-items: center; justify-content: center;
 }
 .login-box {
@@ -133,7 +137,7 @@ input, select { font-family: var(--font); }
   padding: 40px; width: 380px; box-shadow: var(--shadow-md);
 }
 .login-logo { text-align: center; margin-bottom: 28px; }
-.login-logo .logo-icon { width: 50px; height: 50px; font-size: 22px; margin: 0 auto 10px; border-radius: 14px; }
+.login-logo .logo-icon { width: 50px; height: 50px; font-size: 22px; margin: 0 auto 10px; border-radius: 14px; background: linear-gradient(135deg, #C2185B, #7B1FA2); }
 .login-logo h1 { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); }
 .login-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 .form-group { margin-bottom: 16px; }
@@ -492,8 +496,8 @@ tbody tr:hover { background: var(--bg); }
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item:hover { background: #f8f9fc; }
-.notif-item.notif-unread { background: #f0f7ff; }
-.notif-item.notif-unread:hover { background: #e8f0fe; }
+.notif-item.notif-unread { background: #FDF0F5; }
+.notif-item.notif-unread:hover { background: #FCE4EC; }
 
 .notif-icon {
   width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
@@ -632,7 +636,7 @@ tbody tr:hover { background: var(--bg); }
   font-size: 12px; font-weight: 600;
   background: var(--primary-light); color: var(--primary);
 }
-.pill-confirmed { background: #e3f2fd; color: #1565c0; }
+.pill-confirmed { background: var(--primary-light); color: var(--primary); }
 .pill-no_show   { background: #f3f4f6; color: #6b7280; }
 .pill-completed { background: #e6f4ea; color: #1e8e3e; }
 
@@ -649,6 +653,7 @@ tbody tr:hover { background: var(--bg); }
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px; background: var(--primary-light);
   border-radius: 10px; font-size: 13px; margin-top: 4px;
+  border-left: 3px solid var(--primary);
 }
 .wallet-user-chip .chip-name { font-weight: 600; color: var(--primary); }
 .wallet-user-chip .chip-sub  { font-size: 11px; color: var(--text-muted); }
@@ -701,7 +706,7 @@ tbody tr:hover { background: var(--bg); }
 
 .fee-badge {
   display: inline-block; padding: 2px 10px; border-radius: 99px;
-  background: #e8f0fe; color: var(--primary);
+  background: var(--primary-light); color: var(--primary);
   font-size: 11px; font-weight: 600;
 }
 
