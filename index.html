@@ -1035,115 +1035,207 @@
       <!-- ===== SERVICES MANAGEMENT TAB ===== -->
       <div id="tab-services" class="tab-section">
 
-        <!-- Add / Edit Service Form -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span class="card-title" id="service-form-title">Add Service</span>
-            <button class="btn btn-outline" id="cancel-service-btn" style="display:none;" onclick="cancelServiceEdit()">
-              <i class="ti ti-x"></i> Cancel
-            </button>
-          </div>
+        <!-- ======= SERVICES HUB (category overview) ======= -->
+        <div id="services-hub">
+          <p class="services-hub-sub">Select a category to manage its listings</p>
+          <div class="services-hub-grid">
 
-          <div class="banner-upload-zone" id="service-upload-zone" onclick="document.getElementById('service-file-input').click()" role="button" tabindex="0" aria-label="Click to upload service image">
-            <div class="banner-upload-placeholder" id="service-upload-placeholder">
-              <i class="ti ti-photo-plus"></i>
-              <p>Click to upload service image</p>
-              <small>JPG, PNG, WebP · Max 5 MB</small>
+            <div class="svc-cat-card" onclick="openServiceCategory('diagnostics')">
+              <div class="svc-cat-icon" style="background:#e3f2fd;color:#1565c0;"><i class="ti ti-microscope"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Diagnostics</div>
+                <div class="svc-cat-count" id="hub-count-diagnostics">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
             </div>
-            <img id="service-preview-img" style="display:none;" alt="Service preview" />
-          </div>
-          <input type="file" id="service-file-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewServiceImage(event)" />
 
-          <div class="banner-form-grid">
-            <div class="form-group">
-              <label class="form-label">Service Name <span style="color:var(--danger)">*</span></label>
-              <input id="svc-name" type="text" class="form-input" placeholder="e.g. Blood Test at Home" maxlength="100" />
+            <div class="svc-cat-card" onclick="openServiceCategory('lab_tests')">
+              <div class="svc-cat-icon" style="background:#e8eaf6;color:#3949ab;"><i class="ti ti-test-pipe"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Lab Tests</div>
+                <div class="svc-cat-count" id="hub-count-lab_tests">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
             </div>
-            <div class="form-group">
-              <label class="form-label">Category <span style="color:var(--danger)">*</span></label>
-              <select id="svc-type" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
-                <option value="diagnostics">Diagnostics</option>
-                <option value="lab_tests">Lab Tests</option>
-                <option value="physiotherapy">Physiotherapy</option>
-                <option value="care_assistant">Care Assistant</option>
-                <option value="caregivers">Caregivers</option>
-                <option value="equipment">Medical Equipment</option>
-                <option value="consultation">Consultation</option>
-                <option value="nutrition">Nutrition</option>
-                <option value="counselling">Counselling</option>
-                <option value="medicine_delivery">Medicine Delivery</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Price (₹)</label>
-              <input id="svc-price" type="number" min="0" step="1" class="form-input" placeholder="e.g. 499" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Price Unit</label>
-              <select id="svc-price-unit" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
-                <option value="per_session">Per Session</option>
-                <option value="per_hour">Per Hour</option>
-                <option value="per_day">Per Day</option>
-                <option value="per_month">Per Month</option>
-                <option value="onwards">Onwards</option>
-                <option value="free">Free</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Duration / Timeline <span class="form-hint">(optional)</span></label>
-              <input id="svc-duration" type="text" class="form-input" placeholder="e.g. 30-60 min" maxlength="50" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Short Description <span class="form-hint">(optional)</span></label>
-              <input id="svc-desc" type="text" class="form-input" placeholder="Brief service description" maxlength="200" />
-            </div>
-          </div>
 
-          <div class="banner-form-footer">
-            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;flex:1;">
-              <label class="toggle-label">
-                <input type="checkbox" id="svc-enabled" checked />
-                <span class="toggle-switch"></span>
-                <span class="toggle-text">Visible in app</span>
-              </label>
-              <label class="toggle-label">
-                <input type="checkbox" id="svc-featured" />
-                <span class="toggle-switch"></span>
-                <span class="toggle-text">Featured</span>
-              </label>
+            <div class="svc-cat-card" onclick="openServiceCategory('physiotherapy')">
+              <div class="svc-cat-icon" style="background:#e0f7fa;color:#0097a7;"><i class="ti ti-wheelchair"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Physiotherapy</div>
+                <div class="svc-cat-count" id="hub-count-physiotherapy">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
             </div>
-            <div id="service-upload-progress" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
-              <div class="upload-spinner"></div> Uploading…
+
+            <div class="svc-cat-card" onclick="openServiceCategory('care_assistant')">
+              <div class="svc-cat-icon" style="background:#fff3e0;color:#e65100;"><i class="ti ti-nurse"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Care Assistant</div>
+                <div class="svc-cat-count" id="hub-count-care_assistant">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
             </div>
-            <button id="save-service-btn" class="btn-publish" onclick="saveService()">
-              <i class="ti ti-device-floppy"></i> Save Service
-            </button>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('caregivers')">
+              <div class="svc-cat-icon" style="background:#fce4ec;color:#c2185b;"><i class="ti ti-heart-handshake"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Caregivers</div>
+                <div class="svc-cat-count" id="hub-count-caregivers">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('equipment')">
+              <div class="svc-cat-icon" style="background:#eceff1;color:#37474f;"><i class="ti ti-device-heart-monitor"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Medical Equipment</div>
+                <div class="svc-cat-count" id="hub-count-equipment">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('consultation')">
+              <div class="svc-cat-icon" style="background:#f3e5f5;color:#7b1fa2;"><i class="ti ti-stethoscope"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Consultation</div>
+                <div class="svc-cat-count" id="hub-count-consultation">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('nutrition')">
+              <div class="svc-cat-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="ti ti-salad"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Nutrition</div>
+                <div class="svc-cat-count" id="hub-count-nutrition">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('counselling')">
+              <div class="svc-cat-icon" style="background:#e0f2f1;color:#00695c;"><i class="ti ti-brain"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Counselling</div>
+                <div class="svc-cat-count" id="hub-count-counselling">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
+            <div class="svc-cat-card" onclick="openServiceCategory('medicine_delivery')">
+              <div class="svc-cat-icon" style="background:#fff8e1;color:#f57f17;"><i class="ti ti-pill"></i></div>
+              <div class="svc-cat-body">
+                <div class="svc-cat-name">Medicine Delivery</div>
+                <div class="svc-cat-count" id="hub-count-medicine_delivery">—</div>
+              </div>
+              <i class="ti ti-chevron-right svc-cat-arrow"></i>
+            </div>
+
           </div>
         </div>
 
-        <!-- Services List -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">All Services</span>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <input id="service-search" type="text" class="search-input" placeholder="Search services…" oninput="filterServices()" />
-              <select id="service-type-filter" class="filter-select" onchange="filterServices()">
-                <option value="all">All categories</option>
-                <option value="diagnostics">Diagnostics</option>
-                <option value="lab_tests">Lab Tests</option>
-                <option value="physiotherapy">Physiotherapy</option>
-                <option value="care_assistant">Care Assistant</option>
-                <option value="caregivers">Caregivers</option>
-                <option value="equipment">Medical Equipment</option>
-                <option value="consultation">Consultation</option>
-                <option value="nutrition">Nutrition</option>
-                <option value="counselling">Counselling</option>
-                <option value="medicine_delivery">Medicine Delivery</option>
-              </select>
+        <!-- ======= CATEGORY DETAIL VIEW ======= -->
+        <div id="services-cat-view" style="display:none;">
+
+          <!-- Breadcrumb header -->
+          <div class="svc-detail-header">
+            <button class="svc-back-btn" onclick="backToServicesHub()">
+              <i class="ti ti-arrow-left"></i> All Services
+            </button>
+            <div class="svc-detail-title-row">
+              <div id="cat-view-icon-lg"></div>
+              <div>
+                <div class="svc-detail-cat-name" id="cat-view-name"></div>
+                <div class="svc-detail-cat-sub" id="cat-view-count-label"></div>
+              </div>
             </div>
           </div>
-          <div id="services-list"><div class="loading">Loading services…</div></div>
-        </div>
+
+          <!-- Add / Edit Service Form -->
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+              <span class="card-title" id="service-form-title">Add Service</span>
+              <button class="btn btn-outline" id="cancel-service-btn" style="display:none;" onclick="cancelServiceEdit()">
+                <i class="ti ti-x"></i> Cancel
+              </button>
+            </div>
+
+            <div class="banner-upload-zone" id="service-upload-zone" onclick="document.getElementById('service-file-input').click()" role="button" tabindex="0" aria-label="Click to upload service image">
+              <div class="banner-upload-placeholder" id="service-upload-placeholder">
+                <i class="ti ti-photo-plus"></i>
+                <p>Click to upload service image</p>
+                <small>JPG, PNG, WebP · Max 5 MB</small>
+              </div>
+              <img id="service-preview-img" style="display:none;" alt="Service preview" />
+            </div>
+            <input type="file" id="service-file-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewServiceImage(event)" />
+
+            <div class="banner-form-grid">
+              <div class="form-group">
+                <label class="form-label">Service Name <span style="color:var(--danger)">*</span></label>
+                <input id="svc-name" type="text" class="form-input" placeholder="e.g. Blood Test at Home" maxlength="100" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category</label>
+                <div id="svc-type-display" class="form-input" style="display:flex;align-items:center;gap:8px;background:var(--bg);cursor:default;"></div>
+                <input type="hidden" id="svc-type" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Price (₹)</label>
+                <input id="svc-price" type="number" min="0" step="1" class="form-input" placeholder="e.g. 499" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Price Unit</label>
+                <select id="svc-price-unit" class="filter-select" style="width:100%;padding:10px 12px;height:auto;">
+                  <option value="per_session">Per Session</option>
+                  <option value="per_hour">Per Hour</option>
+                  <option value="per_day">Per Day</option>
+                  <option value="per_month">Per Month</option>
+                  <option value="onwards">Onwards</option>
+                  <option value="free">Free</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Duration / Timeline <span class="form-hint">(optional)</span></label>
+                <input id="svc-duration" type="text" class="form-input" placeholder="e.g. 30-60 min" maxlength="50" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Short Description <span class="form-hint">(optional)</span></label>
+                <input id="svc-desc" type="text" class="form-input" placeholder="Brief service description" maxlength="200" />
+              </div>
+            </div>
+
+            <div class="banner-form-footer">
+              <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;flex:1;">
+                <label class="toggle-label">
+                  <input type="checkbox" id="svc-enabled" checked />
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">Visible in app</span>
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="svc-featured" />
+                  <span class="toggle-switch"></span>
+                  <span class="toggle-text">Featured</span>
+                </label>
+              </div>
+              <div id="service-upload-progress" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+                <div class="upload-spinner"></div> Uploading…
+              </div>
+              <button id="save-service-btn" class="btn-publish" onclick="saveService()">
+                <i class="ti ti-device-floppy"></i> Save Service
+              </button>
+            </div>
+          </div>
+
+          <!-- Services list for this category -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="cat-services-list-title">Services</span>
+              <input id="service-search" type="text" class="search-input" placeholder="Search…" oninput="filterServices()" />
+            </div>
+            <div id="services-list"><div class="loading">Loading services…</div></div>
+          </div>
+
+        </div><!-- /services-cat-view -->
 
       </div><!-- /tab-services -->
 

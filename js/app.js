@@ -45,6 +45,15 @@ function switchTab(tab, title) {
   document.getElementById(`tab-${tab}`).classList.add('active');
   document.getElementById('page-title').textContent = title || tab;
   document.getElementById('page-sub').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Always return to hub when re-entering Services
+  if (tab === 'services') {
+    _activeServiceCategory = null;
+    const hub = document.getElementById('services-hub');
+    const catView = document.getElementById('services-cat-view');
+    if (hub) hub.style.display = 'block';
+    if (catView) catView.style.display = 'none';
+  }
 }
 
 // ---- TOAST ----
@@ -2290,9 +2299,10 @@ function updateAdminDisplayName() {
 //   SERVICES MANAGEMENT — FULL CRUD
 // ============================================
 
-let allServices        = [];
-let _editingServiceId  = null;
-let _servicesListener  = null;
+let allServices           = [];
+let _editingServiceId     = null;
+let _servicesListener     = null;
+let _activeServiceCategory = null;
 
 const svcTypeColors = {
   diagnostics:      { bg: '#e0f7fa', fg: '#0097a7', icon: '🔬' },
@@ -2322,22 +2332,72 @@ function initServicesListener() {
   _servicesListener = db.collection('services').orderBy('createdAt', 'desc').onSnapshot(snap => {
     allServices = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     filterServices();
+
+    // Nav badge
     const enabledCount = allServices.filter(s => s.isEnabled).length;
     const badge = document.getElementById('nav-services-count');
     if (badge) { badge.textContent = enabledCount; badge.style.display = enabledCount > 0 ? 'inline' : 'none'; }
+
+    // Update hub counts per category
+    const catKeys = ['diagnostics','lab_tests','physiotherapy','care_assistant','caregivers','equipment','consultation','nutrition','counselling','medicine_delivery'];
+    catKeys.forEach(key => {
+      const count = allServices.filter(s => s.type === key).length;
+      const el = document.getElementById(`hub-count-${key}`);
+      if (el) el.textContent = count === 0 ? 'No services' : `${count} service${count !== 1 ? 's' : ''}`;
+    });
   }, err => console.error('services listener', err));
 }
 
 function filterServices() {
   const q      = (document.getElementById('service-search')?.value || '').toLowerCase();
-  const type   = document.getElementById('service-type-filter')?.value || 'all';
   let filtered = allServices;
-  if (type !== 'all') filtered = filtered.filter(s => s.type === type);
-  if (q)              filtered = filtered.filter(s =>
+  if (_activeServiceCategory) filtered = filtered.filter(s => s.type === _activeServiceCategory);
+  if (q) filtered = filtered.filter(s =>
     (s.name || '').toLowerCase().includes(q) ||
     (s.description || '').toLowerCase().includes(q)
   );
   renderServicesList(filtered);
+
+  const countEl = document.getElementById('cat-view-count-label');
+  if (countEl && _activeServiceCategory) {
+    countEl.textContent = `${filtered.length} service${filtered.length !== 1 ? 's' : ''}`;
+  }
+}
+
+function openServiceCategory(key) {
+  _activeServiceCategory = key;
+  cancelServiceEdit();
+
+  const tc    = svcTypeColors[key] || { bg: '#f3e5f5', fg: '#7b1fa2', icon: '📋' };
+  const label = svcTypeLabel(key);
+
+  // Category detail header
+  document.getElementById('cat-view-icon-lg').innerHTML =
+    `<div style="width:52px;height:52px;border-radius:14px;background:${tc.bg};color:${tc.fg};display:flex;align-items:center;justify-content:center;font-size:26px;">${tc.icon}</div>`;
+  document.getElementById('cat-view-name').textContent = label;
+  document.getElementById('cat-services-list-title').textContent = label + ' Services';
+
+  // Lock category in form
+  document.getElementById('svc-type').value = key;
+  document.getElementById('svc-type-display').innerHTML =
+    `<span style="font-size:16px;line-height:1;">${tc.icon}</span><span style="color:var(--text-secondary);font-size:13px;">${label} (auto-assigned)</span>`;
+
+  // Show detail, hide hub
+  document.getElementById('services-hub').style.display     = 'none';
+  document.getElementById('services-cat-view').style.display = 'block';
+
+  // Update topbar page subtitle
+  document.getElementById('page-sub').textContent = 'Services › ' + label;
+
+  filterServices();
+}
+
+function backToServicesHub() {
+  _activeServiceCategory = null;
+  document.getElementById('services-hub').style.display     = 'block';
+  document.getElementById('services-cat-view').style.display = 'none';
+  document.getElementById('page-sub').textContent =
+    new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 
 function renderServicesList(services) {
@@ -2469,7 +2529,7 @@ function editService(id) {
   if (!s) return;
   _editingServiceId = id;
   document.getElementById('svc-name').value       = s.name        || '';
-  document.getElementById('svc-type').value       = s.type        || 'diagnostics';
+  document.getElementById('svc-type').value       = s.type        || _activeServiceCategory || 'diagnostics';
   document.getElementById('svc-price').value      = s.price       || '';
   document.getElementById('svc-price-unit').value = s.priceUnit   || 'per_session';
   document.getElementById('svc-duration').value   = s.duration    || '';
@@ -2481,25 +2541,27 @@ function editService(id) {
     img.src = s.imageUrl; img.style.display = 'block';
     document.getElementById('service-upload-placeholder').style.display = 'none';
   }
-  document.getElementById('service-form-title').textContent   = 'Edit Service';
-  document.getElementById('save-service-btn').innerHTML = '<i class="ti ti-device-floppy"></i> Save Changes';
+  document.getElementById('service-form-title').textContent = 'Edit Service';
+  document.getElementById('save-service-btn').innerHTML     = '<i class="ti ti-device-floppy"></i> Save Changes';
   document.getElementById('cancel-service-btn').style.display = 'inline-flex';
-  document.getElementById('tab-services').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('services-cat-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelServiceEdit() {
   _editingServiceId = null;
   ['svc-name','svc-price','svc-duration','svc-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const typeEl = document.getElementById('svc-type');     if (typeEl) typeEl.value = 'diagnostics';
-  const puEl   = document.getElementById('svc-price-unit'); if (puEl) puEl.value = 'per_session';
-  document.getElementById('svc-enabled').checked  = true;
-  document.getElementById('svc-featured').checked = false;
-  document.getElementById('service-file-input').value = '';
-  document.getElementById('service-preview-img').style.display      = 'none';
-  document.getElementById('service-upload-placeholder').style.display = 'block';
-  document.getElementById('service-form-title').textContent   = 'Add Service';
-  document.getElementById('save-service-btn').innerHTML = '<i class="ti ti-device-floppy"></i> Save Service';
-  document.getElementById('cancel-service-btn').style.display = 'none';
+  const typeEl = document.getElementById('svc-type');
+  if (typeEl) typeEl.value = _activeServiceCategory || 'diagnostics';
+  const puEl = document.getElementById('svc-price-unit'); if (puEl) puEl.value = 'per_session';
+  const enabledEl = document.getElementById('svc-enabled');   if (enabledEl)  enabledEl.checked  = true;
+  const featuredEl = document.getElementById('svc-featured'); if (featuredEl) featuredEl.checked = false;
+  const fi = document.getElementById('service-file-input'); if (fi) fi.value = '';
+  const pi = document.getElementById('service-preview-img'); if (pi) pi.style.display = 'none';
+  const ph = document.getElementById('service-upload-placeholder'); if (ph) ph.style.display = 'block';
+  const ft = document.getElementById('service-form-title'); if (ft) ft.textContent = 'Add Service';
+  const sb = document.getElementById('save-service-btn');
+  if (sb) sb.innerHTML = '<i class="ti ti-device-floppy"></i> Save Service';
+  const cb = document.getElementById('cancel-service-btn'); if (cb) cb.style.display = 'none';
 }
 
 function previewServiceImage(event) {
