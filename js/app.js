@@ -73,6 +73,7 @@ async function initDashboard() {
   loadFeedbacks();
   initRequestsListener();
   initNotificationsListener();
+  initMaternityListeners();
 }
 
 // ============================================
@@ -3158,3 +3159,199 @@ async function loadBroadcasts() {
     }).join('');
   } catch(err) { el.innerHTML = '<div class="empty-state"><p>Could not load broadcasts</p></div>'; }
 }
+
+// ============================================
+//   MATERNITY CARE MANAGEMENT
+// ============================================
+
+let _matProfiles = [];
+let _currentAssignProfileId = '';
+
+function initMaternityListeners() {
+  // Real-time listener for unresolved alerts
+  db.collection('pregnancy_alerts')
+    .where('isResolved', '==', false)
+    .onSnapshot(snap => {
+      const count = snap.size;
+      const badge = document.getElementById('nav-maternity-alerts');
+      if (badge) {
+        if (count > 0) { badge.textContent = count; badge.style.display = ''; }
+        else badge.style.display = 'none';
+      }
+      const alertCount = document.getElementById('mat-alerts');
+      if (alertCount) alertCount.textContent = count;
+    });
+}
+
+async function loadMaternityOverview() {
+  try {
+    const [profilesSnap, alertsSnap, checkupsSnap] = await Promise.all([
+      db.collection('pregnancy_profiles').where('isActive', '==', true).get(),
+      db.collection('pregnancy_alerts').where('isResolved', '==', false).get(),
+      db.collection('pregnancy_checkups')
+        .where('status', '==', 'upcoming')
+        .where('scheduledDate', '>=', new Date())
+        .get()
+    ]);
+    document.getElementById('mat-total').textContent = profilesSnap.size;
+    const highRisk = profilesSnap.docs.filter(d => d.data().isHighRisk).length;
+    document.getElementById('mat-highrisk').textContent = highRisk;
+    document.getElementById('mat-alerts').textContent = alertsSnap.size;
+    document.getElementById('mat-checkups').textContent = checkupsSnap.size;
+
+    _matProfiles = profilesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderMaternityPatients(_matProfiles);
+    loadMaternityAlerts();
+  } catch(e) { console.error('loadMaternityOverview', e); }
+}
+
+async function loadMaternityAlerts() {
+  const tbody = document.getElementById('mat-alerts-body');
+  if (!tbody) return;
+  try {
+    const snap = await db.collection('pregnancy_alerts')
+      .where('isResolved', '==', false)
+      .orderBy('reportedAt', 'desc')
+      .limit(20)
+      .get();
+    if (snap.empty) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No active alerts 🎉</td></tr>';
+      return;
+    }
+    tbody.innerHTML = snap.docs.map(doc => {
+      const a = doc.data();
+      const reportedAt = a.reportedAt?.toDate ? a.reportedAt.toDate() : new Date();
+      const sevClass = a.severity === 'critical' ? 'color:#b71c1c;font-weight:700;'
+        : a.severity === 'high' ? 'color:#e65100;font-weight:700;' : 'color:#f57f17;';
+      return `<tr>
+        <td><strong>${escapeHtml(a.patientName||'—')}</strong></td>
+        <td>${escapeHtml((a.type||'').replace(/_/g,' ').toUpperCase())}</td>
+        <td style="${sevClass}">${(a.severity||'').toUpperCase()}</td>
+        <td style="max-width:220px;white-space:normal;">${escapeHtml(a.message||'')}</td>
+        <td>${formatDate(a.reportedAt)}</td>
+        <td>
+          <button class="btn-outline" style="padding:4px 10px;font-size:11px;color:#2e7d32;border-color:#2e7d32;"
+            onclick="resolveAlert('${doc.id}')">Resolve</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Error loading alerts</td></tr>';
+  }
+}
+
+async function resolveAlert(alertId) {
+  if (!confirm('Mark this alert as resolved?')) return;
+  try {
+    await db.collection('pregnancy_alerts').doc(alertId).update({
+      isResolved: true,
+      resolvedBy: 'admin',
+      resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast('Alert resolved');
+    loadMaternityAlerts();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+function renderMaternityPatients(profiles) {
+  const tbody = document.getElementById('mat-patients-body');
+  if (!tbody) return;
+  if (!profiles.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No active pregnancy profiles</td></tr>';
+    return;
+  }
+  tbody.innerHTML = profiles.map(p => {
+    const lmp = p.lmpDate?.toDate ? p.lmpDate.toDate() : new Date();
+    const days = Math.floor((Date.now() - lmp.getTime()) / 86400000);
+    const week = Math.min(42, Math.max(1, Math.floor(days / 7)));
+    const trimester = week <= 13 ? '1st' : week <= 26 ? '2nd' : '3rd';
+    const due = p.dueDate?.toDate ? p.dueDate.toDate() : new Date();
+    const riskBadge = p.isHighRisk
+      ? '<span style="background:#ffebee;color:#b71c1c;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">HIGH RISK</span>'
+      : '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:10px;">NORMAL</span>';
+    return `<tr>
+      <td><strong>${escapeHtml(p.patientName||p.patientId||'Patient')}</strong></td>
+      <td>Week ${week}</td>
+      <td>${trimester}</td>
+      <td>${due.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td>${escapeHtml(p.assignedDoctorName||'—')}</td>
+      <td>${riskBadge}</td>
+      <td>
+        <button class="btn-outline" style="padding:4px 10px;font-size:11px;"
+          onclick="openAssignDoctorModal('${p.id}','${escapeHtml(p.patientName||p.patientId||'Patient')}')">
+          Assign Doctor
+        </button>
+        ${p.isHighRisk ? '' : `<button class="btn-outline" style="padding:4px 10px;font-size:11px;color:#e65100;border-color:#e65100;margin-left:4px;"
+          onclick="flagHighRisk('${p.id}')">Flag Risk</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterMaternityPatients() {
+  const search = (document.getElementById('mat-search')?.value || '').toLowerCase();
+  const risk = document.getElementById('mat-filter-risk')?.value || 'all';
+  const filtered = _matProfiles.filter(p => {
+    const name = ((p.patientName || '') + ' ' + (p.patientId || '')).toLowerCase();
+    const matchSearch = !search || name.includes(search);
+    const matchRisk = risk === 'all' || (risk === 'high' && p.isHighRisk) || (risk === 'normal' && !p.isHighRisk);
+    return matchSearch && matchRisk;
+  });
+  renderMaternityPatients(filtered);
+}
+
+async function openAssignDoctorModal(profileId, patientName) {
+  _currentAssignProfileId = profileId;
+  document.getElementById('assign-patient-name').textContent = 'Patient: ' + patientName;
+  const modal = document.getElementById('assign-doctor-modal');
+  if (modal) modal.style.display = 'flex';
+
+  const select = document.getElementById('assign-doctor-select');
+  select.innerHTML = '<option value="">Loading doctors...</option>';
+  try {
+    const snap = await db.collection('doctors').where('status', '==', 'active').get();
+    select.innerHTML = '<option value="">Select a doctor</option>' +
+      snap.docs.map(d => {
+        const doc = d.data();
+        return `<option value="${d.id}" data-name="${escapeHtml(doc.name||'Dr.')}">${escapeHtml(doc.name||'Doctor')} — ${escapeHtml(doc.specialty||'')}</option>`;
+      }).join('');
+  } catch(e) {
+    select.innerHTML = '<option value="">Error loading doctors</option>';
+  }
+}
+
+async function confirmAssignDoctor() {
+  const select = document.getElementById('assign-doctor-select');
+  const doctorId = select.value;
+  if (!doctorId) { showToast('Please select a doctor'); return; }
+  const doctorName = select.options[select.selectedIndex]?.getAttribute('data-name') || 'Doctor';
+  try {
+    await db.collection('pregnancy_profiles').doc(_currentAssignProfileId).update({
+      assignedDoctorId: doctorId,
+      assignedDoctorName: doctorName,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('assign-doctor-modal').style.display = 'none';
+    showToast('Doctor assigned successfully');
+    loadMaternityOverview();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function flagHighRisk(profileId) {
+  if (!confirm('Flag this patient as High Risk? This will enable priority monitoring.')) return;
+  try {
+    await db.collection('pregnancy_profiles').doc(profileId).update({
+      isHighRisk: true,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast('Patient flagged as high risk');
+    loadMaternityOverview();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+// Load maternity when tab is opened
+const _origSwitchTab = window.switchTab;
+window.switchTab = function(tab, title) {
+  _origSwitchTab && _origSwitchTab(tab, title);
+  if (tab === 'maternity') loadMaternityOverview();
+};

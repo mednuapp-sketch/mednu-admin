@@ -98,6 +98,11 @@
         <i class="ti ti-ambulance nav-icon" aria-hidden="true"></i> Ambulances
         <span class="nav-badge nav-badge-green" id="nav-ambulance-count" style="display:none;">0</span>
       </div>
+      <div class="nav-section-label">Maternity</div>
+      <div class="nav-item" data-tab="maternity" data-title="Maternity Care Management">
+        <i class="ti ti-heart nav-icon" aria-hidden="true"></i> Maternity
+        <span class="nav-badge nav-badge-red" id="nav-maternity-alerts" style="display:none;">0</span>
+      </div>
       <div class="nav-section-label">Quality</div>
       <div class="nav-item" data-tab="feedback" data-title="Patient Feedback">
         <i class="ti ti-star nav-icon" aria-hidden="true"></i> Feedback
@@ -455,6 +460,116 @@
             </select>
           </div>
           <div id="banners-list"><div class="loading">Loading banners…</div></div>
+        </div>
+
+      </div>
+
+      <!-- ===== MATERNITY TAB ===== -->
+      <div id="tab-maternity" class="tab-section">
+
+        <!-- Summary metrics -->
+        <div class="metrics-grid" style="margin-bottom:16px;" id="maternity-stats">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fce4ec;color:#c2185b;"><i class="ti ti-pregnant"></i></div>
+            <div class="metric-info">
+              <div class="metric-value" id="mat-total">—</div>
+              <div class="metric-label">Active Pregnancies</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#fff3e0;color:#e65100;"><i class="ti ti-alert-triangle"></i></div>
+            <div class="metric-info">
+              <div class="metric-value" id="mat-highrisk">—</div>
+              <div class="metric-label">High-Risk Cases</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#ffebee;color:#b71c1c;"><i class="ti ti-urgent"></i></div>
+            <div class="metric-info">
+              <div class="metric-value" id="mat-alerts">—</div>
+              <div class="metric-label">Active Alerts</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="ti ti-calendar-check"></i></div>
+            <div class="metric-info">
+              <div class="metric-value" id="mat-checkups">—</div>
+              <div class="metric-label">Upcoming Checkups</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-urgent" style="color:#b71c1c;margin-right:6px;"></i>Emergency Alerts</div>
+            <button class="btn-outline" onclick="loadMaternityAlerts()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="mat-alerts-table">
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Type</th>
+                  <th>Severity</th>
+                  <th>Message</th>
+                  <th>Reported</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="mat-alerts-body">
+                <tr><td colspan="6" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Active Pregnancies Table -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-pregnant" style="color:#c2185b;margin-right:6px;"></i>Active Pregnancy Profiles</div>
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="form-input" id="mat-search" placeholder="Search patient..." style="width:200px;" oninput="filterMaternityPatients()" />
+              <select class="form-input" id="mat-filter-risk" onchange="filterMaternityPatients()" style="width:140px;">
+                <option value="all">All Patients</option>
+                <option value="high">High Risk</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Week</th>
+                  <th>Trimester</th>
+                  <th>Due Date</th>
+                  <th>Assigned Doctor</th>
+                  <th>Risk</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="mat-patients-body">
+                <tr><td colspan="7" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Assign Doctor Modal Trigger -->
+        <div id="assign-doctor-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+          <div style="background:white;border-radius:16px;padding:24px;width:90%;max-width:440px;">
+            <h3 style="margin:0 0 16px;">Assign Doctor</h3>
+            <p id="assign-patient-name" style="color:#616161;margin-bottom:12px;">Patient: —</p>
+            <select id="assign-doctor-select" class="form-input" style="width:100%;margin-bottom:16px;">
+              <option value="">Loading doctors...</option>
+            </select>
+            <div style="display:flex;gap:10px;">
+              <button class="btn-outline" style="flex:1;" onclick="document.getElementById('assign-doctor-modal').style.display='none'">Cancel</button>
+              <button class="btn-primary" style="flex:2;" onclick="confirmAssignDoctor()">Assign</button>
+            </div>
+          </div>
         </div>
 
       </div>
