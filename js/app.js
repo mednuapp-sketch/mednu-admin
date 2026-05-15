@@ -250,7 +250,7 @@ function showDoctorModal(d) {
       </div>
 
       <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:20px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#880E4F,#7B1FA2);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">${getInitials(d.name||'DR')}</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#522546,#8B3A6B);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">${getInitials(d.name||'DR')}</div>
         <div>
           <div style="font-size:16px;font-weight:700;">${d.name||'—'}</div>
           <div style="font-size:13px;color:#888;">${d.specialty||d.specialisation||'—'} • ${d.experience||'—'} yrs</div>
@@ -444,7 +444,7 @@ async function loadTopMedicinesOverview() {
     });
   });
   const sorted = Object.entries(medicineCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
-  const colors = ['#1a73e8','#1e8e3e','#f29900','#d93025','#7b61ff'];
+  const colors = ['#522546','#2E7D32','#F57F17','#C62828','#8B3A6B'];
   const el = document.getElementById('top-medicines-list');
   if (!sorted.length) { el.innerHTML = '<div class="empty-state"><p>No prescription data</p></div>'; return; }
   const max = sorted[0][1];
@@ -466,7 +466,7 @@ function renderMedicinesTable(sorted) {
     <td>
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="flex:1;height:6px;background:var(--border);border-radius:99px;overflow:hidden;">
-          <div style="width:${Math.round(count/max*100)}%;height:100%;background:#1a73e8;border-radius:99px;"></div>
+          <div style="width:${Math.round(count/max*100)}%;height:100%;background:#522546;border-radius:99px;"></div>
         </div>
         <span style="font-size:12px;color:var(--text-muted);min-width:36px;">${count.toLocaleString()}</span>
       </div>
@@ -597,7 +597,7 @@ async function buildRevenueChart() {
     type: 'bar',
     data: {
       labels: months.map(m => m.label),
-      datasets: [{ label: 'Revenue (₹)', data, backgroundColor: '#1a73e8', borderRadius: 6 }]
+      datasets: [{ label: 'Revenue (₹)', data, backgroundColor: '#522546', borderRadius: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -657,7 +657,7 @@ function buildRevenueDetailChart(payments) {
     data: {
       labels: months.map(m => m.label),
       datasets: [
-        { label: 'Consultations', data: consultData, backgroundColor: '#1a73e8', borderRadius: 4 },
+        { label: 'Consultations', data: consultData, backgroundColor: '#522546', borderRadius: 4 },
         { label: 'Subscriptions', data: subscData,   backgroundColor: '#1e8e3e', borderRadius: 4 },
         { label: 'Commission',    data: commData,     backgroundColor: '#f29900', borderRadius: 4 }
       ]
@@ -1024,9 +1024,9 @@ function getInitials(name) {
 }
 
 const avatarColors = [
-  { bg: '#e8f0fe', fg: '#1557b0' }, { bg: '#e6f4ea', fg: '#137333' },
-  { bg: '#fef7e0', fg: '#b06000' }, { bg: '#fce8e6', fg: '#a50e0e' },
-  { bg: '#f3e8fd', fg: '#6200ea' }, { bg: '#e0f7fa', fg: '#006064' }
+  { bg: '#F5E6F0', fg: '#522546' }, { bg: '#E8F5E9', fg: '#2E7D32' },
+  { bg: '#FFF8E1', fg: '#F57F17' }, { bg: '#FFEBEE', fg: '#C62828' },
+  { bg: '#F9EBF5', fg: '#8B3A6B' }, { bg: '#E3F2FD', fg: '#1565C0' }
 ];
 function randomAvatarColor(seed = '') {
   let h = 0;
@@ -1515,7 +1515,7 @@ function renderHospitalsList(hospitals) {
   }
   el.innerHTML = hospitals.map(h => `
     <div class="banner-card" id="hospital-card-${h.id}">
-      <div class="banner-thumb-placeholder" style="background:#e8f0fe;color:#1a73e8;font-size:26px;">
+      <div class="banner-thumb-placeholder" style="background:#F5E6F0;color:#522546;font-size:26px;">
         <i class="ti ti-building-hospital"></i>
       </div>
       <div class="banner-info">
@@ -2835,7 +2835,7 @@ function searchWalletUser() {
       sugBox.innerHTML = snap.docs.map(doc => {
         const u = doc.data();
         return `<div class="wallet-suggestion-item" onclick="selectWalletUser('${doc.id}','${escapeHtml(u.name||'')}','${escapeHtml(u.phone||'')}')">
-          <div class="doc-avatar" style="background:#e8f0fe;color:#1a73e8;width:28px;height:28px;font-size:11px;">${getInitials(u.name||'U')}</div>
+          <div class="doc-avatar" style="background:#F5E6F0;color:#522546;width:28px;height:28px;font-size:11px;">${getInitials(u.name||'U')}</div>
           <div><div style="font-weight:600;">${escapeHtml(u.name||'—')}</div><div style="font-size:11px;color:var(--text-muted);">${escapeHtml(u.phone||u.email||doc.id)}</div></div>
         </div>`;
       }).join('');
@@ -2994,7 +2994,7 @@ function renderNotifList() {
     if (n._merged) {
       // System notification (doctor/appointment/ticket)
       const configs = {
-        doctor_reg:  { icon: '👨‍⚕️', bg: '#e8f0fe', fg: '#1a73e8', title: 'New Doctor Registration', sub: `${n.name} — ${n.specialty}` },
+        doctor_reg:  { icon: '👨‍⚕️', bg: '#F5E6F0', fg: '#522546', title: 'New Doctor Registration', sub: `${n.name} — ${n.specialty}` },
         appointment: { icon: '📅', bg: '#e8f5e9', fg: '#2e7d32', title: 'New Appointment', sub: `${n.patient} with Dr. ${n.doctor}` },
         ticket:      { icon: '🎫', bg: '#fff3e0', fg: '#e65100', title: `New ${capitalize(n.priority||'medium')} Ticket`, sub: `${n.user}: ${n.title}` },
       };
@@ -3149,7 +3149,7 @@ async function loadBroadcasts() {
     el.innerHTML = snap.docs.map(doc => {
       const b = doc.data();
       return `<div class="broadcast-item">
-        <div class="broadcast-icon" style="background:${b.type==='emergency'?'#fce8e6':'#e8f0fe'};color:${b.type==='emergency'?'#d93025':'#1a73e8'};">${iconMap[b.type]||'📢'}</div>
+        <div class="broadcast-icon" style="background:${b.type==='emergency'?'#FFEBEE':'#F5E6F0'};color:${b.type==='emergency'?'#C62828':'#522546'};">${iconMap[b.type]||'📢'}</div>
         <div class="broadcast-content">
           <div class="broadcast-title">${escapeHtml(b.title||'—')}</div>
           <div class="broadcast-sub">${escapeHtml(b.body||'')}</div>

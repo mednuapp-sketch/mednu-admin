@@ -1,12 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Sora:wght@400;600&display=swap');
 
 :root {
-  /* MedNu Brand Colors */
-  --primary: #C2185B;
-  --primary-light: #FCE4EC;
-  --primary-dark: #880E4F;
-  --secondary: #7B1FA2;
-  --secondary-light: #F3E5F5;
+  /* MedNu Brand — Deep Plum Palette */
+  --primary: #522546;
+  --primary-light: #F5E6F0;
+  --primary-dark: #3A1A32;
+  --primary-mid: #7B3A6B;
+  --secondary: #8B3A6B;
+  --secondary-light: #F9EBF5;
   --success: #2E7D32;
   --success-light: #E8F5E9;
   --warning: #F57F17;
@@ -15,17 +16,17 @@
   --danger-light: #FFEBEE;
   --info: #1565C0;
   --info-light: #E3F2FD;
-  --bg: #F7F4F8;
-  --sidebar-bg: #060C18;
-  --sidebar-text: #9aa5b4;
+  --bg: #F8F4F7;
+  --sidebar-bg: #120A10;
+  --sidebar-text: #b09aaa;
   --sidebar-active: #ffffff;
   --card-bg: #ffffff;
-  --text-primary: #1A1A2E;
-  --text-secondary: #616161;
-  --text-muted: #BDBDBD;
-  --border: #E0E0E0;
-  --shadow: 0 1px 3px rgba(194,24,91,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 6px rgba(194,24,91,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --text-primary: #1E0E1A;
+  --text-secondary: #5D4A56;
+  --text-muted: #B09AAA;
+  --border: #E8DCE4;
+  --shadow: 0 1px 3px rgba(82,37,70,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(82,37,70,0.10), 0 2px 4px rgba(0,0,0,0.04);
   --radius: 10px;
   --radius-sm: 6px;
   --font: 'DM Sans', sans-serif;
@@ -56,7 +57,7 @@ input, select { font-family: var(--font); }
 }
 .logo-icon {
   width: 34px; height: 34px; border-radius: 9px;
-  background: linear-gradient(135deg, #C2185B, #7B1FA2);
+  background: linear-gradient(135deg, #522546, #8B3A6B);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: #fff; font-family: var(--font-display); font-weight: 600;
 }
@@ -74,7 +75,7 @@ input, select { font-family: var(--font); }
   position: relative; border-left: 3px solid transparent;
 }
 .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.nav-item.active { background: rgba(194,24,91,0.18); color: #fff; border-left-color: #C2185B; }
+.nav-item.active { background: rgba(82,37,70,0.35); color: #fff; border-left-color: #8B3A6B; }
 .nav-item .nav-icon { font-size: 17px; width: 20px; text-align: center; }
 .nav-badge {
   margin-left: auto; background: #d93025; color: #fff;
@@ -87,7 +88,7 @@ input, select { font-family: var(--font); }
 .admin-info { display: flex; align-items: center; gap: 10px; }
 .admin-avatar {
   width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, #C2185B, #7B1FA2);
+  background: linear-gradient(135deg, #522546, #8B3A6B);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; color: #fff;
 }
@@ -129,7 +130,7 @@ input, select { font-family: var(--font); }
 /* ---- LOGIN PAGE ---- */
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #060C18 0%, #0D1525 50%, #1A0A1E 100%);
+  background: linear-gradient(135deg, #0D0510 0%, #120A10 50%, #1E0A18 100%);
   display: flex; align-items: center; justify-content: center;
 }
 .login-box {
@@ -137,7 +138,7 @@ input, select { font-family: var(--font); }
   padding: 40px; width: 380px; box-shadow: var(--shadow-md);
 }
 .login-logo { text-align: center; margin-bottom: 28px; }
-.login-logo .logo-icon { width: 50px; height: 50px; font-size: 22px; margin: 0 auto 10px; border-radius: 14px; background: linear-gradient(135deg, #C2185B, #7B1FA2); }
+.login-logo .logo-icon { width: 50px; height: 50px; font-size: 22px; margin: 0 auto 10px; border-radius: 14px; background: linear-gradient(135deg, #522546, #8B3A6B); }
 .login-logo h1 { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); }
 .login-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 .form-group { margin-bottom: 16px; }
