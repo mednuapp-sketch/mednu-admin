@@ -1171,7 +1171,13 @@ function renderRequestsTable(requests) {
     const color       = randomAvatarColor(r.patientName);
     const received    = r.createdAt ? formatDate(r.createdAt) : '—';
     const dateTime    = [r.preferredDate, r.preferredTime].filter(Boolean).join(' ') || '—';
-    const address     = r.address ? (r.address.length > 30 ? r.address.slice(0, 30) + '…' : r.address) : '—';
+    const locData     = r.serviceDetails?.locationData || {};
+    const addrText    = locData.formattedAddress || r.address || '—';
+    const addrShort   = addrText.length > 35 ? addrText.slice(0, 35) + '…' : addrText;
+    const mapsLink    = (locData.lat && locData.lng)
+      ? `<a href="https://www.google.com/maps?q=${locData.lat},${locData.lng}" target="_blank" title="Open in Google Maps" style="margin-left:4px;color:#1a73e8;font-size:12px;">🗺️</a>`
+      : '';
+    const address     = `${addrShort}${mapsLink}`;
 
     const isPending   = status === 'pending';
     const isActive    = ['accepted','assigned','in_progress'].includes(status);
@@ -1232,7 +1238,8 @@ function viewRequestDetail(id) {
 
   const details = r.serviceDetails || {};
   const detailRows = Object.entries(details)
-    .map(([k, v]) => `<tr><td style="font-weight:600;font-size:12px;color:var(--text-secondary);padding:5px 0;">${formatDetailKey(k)}</td><td style="font-size:12px;padding:5px 0 5px 12px;">${v}</td></tr>`)
+    .filter(([k]) => k !== 'locationData') // shown in dedicated location block
+    .map(([k, v]) => `<tr><td style="font-weight:600;font-size:12px;color:var(--text-secondary);padding:5px 0;">${formatDetailKey(k)}</td><td style="font-size:12px;padding:5px 0 5px 12px;">${typeof v === 'object' ? JSON.stringify(v) : v}</td></tr>`)
     .join('');
 
   const status = r.status || 'pending';
@@ -1270,10 +1277,7 @@ function viewRequestDetail(id) {
         </div>
       </div>
 
-      <div style="padding:12px;background:#f9f9f9;border-radius:12px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px;">ADDRESS</div>
-        <div style="font-size:13px;">${r.address || '—'}</div>
-      </div>
+      ${buildLocationBlock(r)}
 
       ${r.notes ? `
       <div style="padding:12px;background:#fffde7;border-radius:12px;margin-bottom:14px;border:1px solid #fff9c4;">
@@ -1304,6 +1308,60 @@ function viewRequestDetail(id) {
 
   document.body.appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// Build precise location block for request detail modal
+function buildLocationBlock(r) {
+  const loc = r.serviceDetails?.locationData || {};
+  const formatted = loc.formattedAddress || r.address || '—';
+  const lat = loc.lat;
+  const lng = loc.lng;
+
+  const hasPrecise = loc.plotNo || loc.building || loc.street || loc.area;
+
+  const mapsUrl = (lat && lng)
+    ? `https://www.google.com/maps?q=${lat},${lng}`
+    : (formatted !== '—' ? `https://www.google.com/maps/search/${encodeURIComponent(formatted)}` : null);
+
+  const navUrl = (lat && lng)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
+    : null;
+
+  const fields = [
+    loc.plotNo    ? ['Plot / House', loc.plotNo]        : null,
+    loc.building  ? ['Building', loc.building]           : null,
+    loc.street    ? ['Street', loc.street]               : null,
+    loc.landmark  ? ['Landmark', 'Near ' + loc.landmark] : null,
+    loc.area      ? ['Area', loc.area]                   : null,
+    loc.city      ? ['City', loc.city]                   : null,
+    loc.pincode   ? ['Pincode', loc.pincode]             : null,
+    loc.state     ? ['State', loc.state]                 : null,
+    (lat && lng)  ? ['Coordinates', `${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}`] : null,
+  ].filter(Boolean);
+
+  return `
+  <div style="padding:14px;background:#f0f7ff;border:1px solid #d0e4ff;border-radius:12px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:#1a73e8;letter-spacing:0.5px;">📍 SERVICE LOCATION</div>
+      <div style="display:flex;gap:6px;">
+        ${navUrl ? `<a href="${navUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#34a853;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;text-decoration:none;">
+          🧭 Navigate
+        </a>` : ''}
+        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#1a73e8;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;text-decoration:none;">
+          🗺️ Open in Maps
+        </a>` : ''}
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:${hasPrecise ? '10' : '0'}px;">${formatted}</div>
+    ${hasPrecise ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+      ${fields.map(([k, v]) => `
+        <div style="padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #d0e4ff;">
+          <div style="font-size:10px;font-weight:700;color:#1a73e8;margin-bottom:2px;">${k.toUpperCase()}</div>
+          <div style="font-size:12px;font-weight:600;color:#222;">${v}</div>
+        </div>`).join('')}
+    </div>` : ''}
+  </div>`;
 }
 
 function reqTypeLabel(type) {
