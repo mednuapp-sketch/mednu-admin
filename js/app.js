@@ -3,9 +3,53 @@
 //   Fetches real data from Firebase Firestore
 // ============================================
 
+// ── Security: HTML escaping to prevent XSS ──────────────────────────────────
+// ALWAYS call escHtml() before inserting Firestore data into innerHTML.
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// ── Rate-limit guard (prevents double-clicking approve/reject) ───────────────
+const _actionCooldowns = new Set();
+function withCooldown(key, fn) {
+  if (_actionCooldowns.has(key)) return;
+  _actionCooldowns.add(key);
+  fn();
+  setTimeout(() => _actionCooldowns.delete(key), 3000);
+}
+
+// ── Global unhandled rejection logger ───────────────────────────────────────
+window.addEventListener('unhandledrejection', event => {
+  console.error('[MedNU Admin] Unhandled promise rejection:', event.reason);
+  showToast('An unexpected error occurred. Check the console.');
+});
+
+// ── Admin role verification ──────────────────────────────────────────────────
+async function verifyAdminRole(uid) {
+  try {
+    const adminDoc = await db.collection('admins').doc(uid).get();
+    return adminDoc.exists;
+  } catch (e) {
+    return false;
+  }
+}
+
 // ---- AUTH GUARD ----
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
   if (user) {
+    // Verify the signed-in user is actually an admin
+    const isAdmin = await verifyAdminRole(user.uid);
+    if (!isAdmin) {
+      showToast('Access denied: not an admin account.');
+      await auth.signOut();
+      return;
+    }
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     initDashboard();
@@ -80,9 +124,11 @@ async function initDashboard() {
   loadReferralStats();
   loadReferrals();
   loadFeedbacks();
+  loadSpecRequests();
   initRequestsListener();
   initNotificationsListener();
   initMaternityListeners();
+  loadReviews();
 }
 
 // ============================================
@@ -145,13 +191,13 @@ function renderPendingList(docs) {
     const color = randomAvatarColor();
     el.innerHTML += `
     <div class="user-cell" style="padding:10px 0; border-bottom:1px solid var(--border);">
-      <div class="doc-avatar" style="background:${color.bg};color:${color.fg};">${initials}</div>
+      <div class="doc-avatar" style="background:${escHtml(color.bg)};color:${escHtml(color.fg)};">${escHtml(initials)}</div>
       <div style="flex:1;">
-        <div class="user-name">${d.name || 'Unknown'}</div>
-        <div class="user-sub">${d.specialty || d.specialisation || 'General'}</div>
+        <div class="user-name">${escHtml(d.name || 'Unknown')}</div>
+        <div class="user-sub">${escHtml(d.specialty || d.specialisation || 'General')}</div>
       </div>
       <span class="pill pill-pending">Pending</span>
-      <button class="btn btn-approve" style="margin-left:8px;" onclick="approveDoctor('${doc.id}', this)">Approve</button>
+      <button class="btn btn-approve" style="margin-left:8px;" onclick="approveDoctor('${escHtml(doc.id)}', this)">Approve</button>
     </div>`;
   });
 }
@@ -162,10 +208,18 @@ function renderPendingList(docs) {
 let allDoctors = [];
 
 async function loadDoctors() {
-  const snap = await db.collection('doctors').orderBy('createdAt', 'desc').get();
-  allDoctors = [];
-  snap.forEach(doc => allDoctors.push({ id: doc.id, ...doc.data() }));
-  renderDoctorsTable(allDoctors);
+  const tbody = document.getElementById('doctors-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading doctors...</td></tr>';
+  try {
+    const snap = await db.collection('doctors').orderBy('createdAt', 'desc').get();
+    allDoctors = [];
+    snap.forEach(doc => allDoctors.push({ id: doc.id, ...doc.data() }));
+    renderDoctorsTable(allDoctors);
+  } catch (err) {
+    console.error('loadDoctors error:', err);
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="loading" style="color:red;">Failed to load doctors. Check your connection.</td></tr>';
+    showToast('Failed to load doctors list.');
+  }
 }
 
 function renderDoctorsTable(doctors) {
@@ -177,38 +231,61 @@ function renderDoctorsTable(doctors) {
   tbody.innerHTML = doctors.map(d => {
     const initials = getInitials(d.name || 'DR');
     const color = randomAvatarColor(d.name);
+    const safeStatus = (d.status || 'pending').toLowerCase();
     return `<tr>
       <td><div class="user-cell">
-        <div class="doc-avatar" style="background:${color.bg};color:${color.fg};">${initials}</div>
-        <div><div class="user-name">${d.name || '—'}</div><div class="user-sub">${d.email || ''}</div></div>
+        <div class="doc-avatar" style="background:${escHtml(color.bg)};color:${escHtml(color.fg)};">${escHtml(initials)}</div>
+        <div><div class="user-name">${escHtml(d.name || '—')}</div><div class="user-sub">${escHtml(d.email || '')}</div></div>
       </div></td>
-      <td>${d.specialisation || '—'}</td>
-      <td>${d.phone || '—'}</td>
-      <td>${d.consultations || 0}</td>
-      <td>⭐ ${d.rating ? d.rating.toFixed(1) : '—'}</td>
-      <td><span class="pill pill-${(d.status||'pending').toLowerCase()}">${capitalize(d.status||'Pending')}</span></td>
+      <td>${escHtml(d.specialisation || '—')}</td>
+      <td>${escHtml(d.phone || '—')}</td>
+      <td>${escHtml(String(d.consultations || 0))}</td>
+      <td>⭐ ${escHtml(d.rating ? d.rating.toFixed(1) : '—')}</td>
+      <td><span class="pill pill-${escHtml(safeStatus)}">${escHtml(capitalize(d.status || 'Pending'))}</span></td>
       <td>
         ${(!d.status || d.status === 'pending') ? `
-          <button class="btn btn-approve" onclick="approveDoctor('${d.id}', this)">Approve</button>
-          <button class="btn btn-reject" style="margin-left:4px;" onclick="rejectDoctor('${d.id}', this)">Reject</button>
-        ` : `<button class="btn btn-outline" onclick="viewDoctor('${d.id}')">View</button>`}
+          <button class="btn btn-approve" onclick="approveDoctor('${escHtml(d.id)}', this)">Approve</button>
+          <button class="btn btn-reject" style="margin-left:4px;" onclick="rejectDoctor('${escHtml(d.id)}', this)">Reject</button>
+        ` : `<button class="btn btn-outline" onclick="viewDoctor('${escHtml(d.id)}')">View</button>`}
       </td>
     </tr>`;
   }).join('');
 }
 
 async function approveDoctor(id, btn) {
-  btn.disabled = true; btn.textContent = '...';
-  await db.collection('doctors').doc(id).update({ status: 'active' });
-  showToast('Doctor approved successfully!');
-  loadDoctors(); loadOverview();
+  withCooldown(`approve-${id}`, async () => {
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      await db.collection('doctors').doc(id).update({
+        status: 'active',
+        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showToast('Doctor approved successfully!');
+      loadDoctors(); loadOverview();
+    } catch (err) {
+      console.error('approveDoctor error:', err);
+      btn.disabled = false; btn.textContent = 'Approve';
+      showToast('Failed to approve doctor. Please try again.');
+    }
+  });
 }
 
 async function rejectDoctor(id, btn) {
-  btn.disabled = true; btn.textContent = '...';
-  await db.collection('doctors').doc(id).update({ status: 'suspended' });
-  showToast('Doctor rejected.');
-  loadDoctors();
+  withCooldown(`reject-${id}`, async () => {
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      await db.collection('doctors').doc(id).update({
+        status: 'suspended',
+        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showToast('Doctor rejected.');
+      loadDoctors();
+    } catch (err) {
+      console.error('rejectDoctor error:', err);
+      btn.disabled = false; btn.textContent = 'Reject';
+      showToast('Failed to reject doctor. Please try again.');
+    }
+  });
 }
 
 function viewDoctor(id) {
@@ -308,6 +385,299 @@ async function rejectFromModal(id) {
   showToast('Doctor application rejected.');
   document.getElementById('doctor-modal')?.remove();
   loadDoctors(); loadOverview();
+}
+
+// ============================================
+//   DOCTOR SPECIALIZATION REQUESTS
+// ============================================
+let allSpecRequests = [];
+let _srListener = null;
+
+function loadSpecRequests() {
+  if (_srListener) _srListener();
+  _srListener = db.collection('doctor_specialization_requests')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snap => {
+      allSpecRequests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      _updateSrStats();
+      filterSpecRequests();
+    }, err => console.error('Spec requests load error:', err));
+}
+
+function _updateSrStats() {
+  const pending  = allSpecRequests.filter(r => r.status === 'pending').length;
+  const review   = allSpecRequests.filter(r => r.status === 'under_review').length;
+  const approved = allSpecRequests.filter(r => r.status === 'approved').length;
+  const rejected = allSpecRequests.filter(r => r.status === 'rejected').length;
+
+  document.getElementById('sr-count-pending')?.textContent  !== undefined && (document.getElementById('sr-count-pending').textContent  = pending);
+  document.getElementById('sr-count-review')?.textContent   !== undefined && (document.getElementById('sr-count-review').textContent   = review);
+  document.getElementById('sr-count-approved')?.textContent !== undefined && (document.getElementById('sr-count-approved').textContent = approved);
+  document.getElementById('sr-count-rejected')?.textContent !== undefined && (document.getElementById('sr-count-rejected').textContent = rejected);
+
+  const actionable = pending + review;
+  const badge = document.getElementById('nav-spec-requests-count');
+  if (badge) {
+    badge.textContent   = actionable;
+    badge.style.display = actionable > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function filterSpecRequests() {
+  const q      = (document.getElementById('sr-search')?.value || '').toLowerCase();
+  const status = document.getElementById('sr-status-filter')?.value || 'all';
+  let list = [...allSpecRequests];
+  if (status !== 'all') list = list.filter(r => r.status === status);
+  if (q) list = list.filter(r =>
+    (r.doctorName || '').toLowerCase().includes(q) ||
+    (r.oldSpecialization || '').toLowerCase().includes(q) ||
+    (r.requestedSpecialization || '').toLowerCase().includes(q)
+  );
+  renderSpecRequestsTable(list);
+}
+
+document.getElementById('sr-search')?.addEventListener('input', filterSpecRequests);
+document.getElementById('sr-status-filter')?.addEventListener('change', filterSpecRequests);
+
+function renderSpecRequestsTable(list) {
+  const tbody = document.getElementById('sr-tbody');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">No specialization requests found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(r => {
+    const initials = getInitials(r.doctorName || 'DR');
+    const color    = randomAvatarColor(r.doctorName);
+    const docCount = (r.documents || []).length;
+    const date     = r.createdAt?.toDate
+      ? r.createdAt.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—';
+
+    const statusCfg = {
+      pending:      { cls: 'pending',   label: 'Pending' },
+      under_review: { cls: 'warning',   label: 'Under Review' },
+      approved:     { cls: 'active',    label: 'Approved' },
+      rejected:     { cls: 'suspended', label: 'Rejected' },
+    };
+    const sc = statusCfg[r.status] || statusCfg.pending;
+
+    const isPending = r.status === 'pending' || r.status === 'under_review';
+
+    return `<tr>
+      <td><div class="user-cell">
+        <div class="doc-avatar" style="background:${color.bg};color:${color.fg};">${initials}</div>
+        <div><div class="user-name">${r.doctorName || '—'}</div></div>
+      </div></td>
+      <td><span style="font-size:13px;color:var(--text-secondary);">${r.oldSpecialization || '—'}</span></td>
+      <td><strong style="color:var(--primary);">${r.requestedSpecialization || '—'}</strong></td>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:13px;">
+          <span>📄</span> ${docCount} doc${docCount !== 1 ? 's' : ''}
+        </span>
+      </td>
+      <td style="font-size:12px;color:var(--text-secondary);">${date}</td>
+      <td><span class="pill pill-${sc.cls}">${sc.label}</span></td>
+      <td>
+        <button class="btn btn-outline" onclick="viewSpecRequest('${r.id}')" style="margin-right:4px;">View</button>
+        ${isPending ? `
+          <button class="btn btn-approve" onclick="approveSpecRequest('${r.id}', this)">Approve</button>
+          <button class="btn btn-reject" onclick="promptRejectSpecRequest('${r.id}')" style="margin-left:4px;">Reject</button>
+        ` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function viewSpecRequest(id) {
+  const r = allSpecRequests.find(x => x.id === id);
+  if (!r) return;
+
+  document.getElementById('sr-modal')?.remove();
+
+  const docHtml = (r.documents || []).map(d => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#f9f9f9;border-radius:10px;margin-bottom:8px;">
+      <span style="font-size:18px;">${(d.name||'').endsWith('.pdf') ? '📕' : '🖼️'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name || 'Document'}</div>
+      </div>
+      <a href="${d.url}" target="_blank" style="padding:5px 10px;background:var(--primary-light,#f3e5f5);color:var(--primary,#880E4F);border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;">View ↗</a>
+    </div>
+  `).join('') || '<p style="color:#aaa;font-size:13px;font-style:italic;">No documents uploaded</p>';
+
+  const date = r.createdAt?.toDate
+    ? r.createdAt.toDate().toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+    : '—';
+
+  const statusColors = {
+    pending:      { bg:'#E3F2FD', color:'#1565C0' },
+    under_review: { bg:'#FFF8E1', color:'#F57F17' },
+    approved:     { bg:'#E8F5E9', color:'#2E7D32' },
+    rejected:     { bg:'#FFEBEE', color:'#C62828' },
+  };
+  const sc = statusColors[r.status] || statusColors.pending;
+  const statusLabel = { pending:'Pending Approval', under_review:'Under Review', approved:'Approved', rejected:'Rejected' }[r.status] || 'Pending';
+
+  const isPending = r.status === 'pending' || r.status === 'under_review';
+  const remarksHtml = r.adminRemarks
+    ? `<div style="margin-top:14px;padding:12px;background:#fff8e1;border-radius:10px;border:1px solid #ffe082;">
+         <div style="font-size:11px;font-weight:700;color:#f57f17;text-transform:uppercase;margin-bottom:4px;">Admin Remarks</div>
+         <div style="font-size:13px;color:var(--text-primary);">${r.adminRemarks}</div>
+       </div>`
+    : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'sr-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h2 style="font-size:18px;font-weight:700;margin:0;">Specialization Change Request</h2>
+        <button onclick="document.getElementById('sr-modal').remove()" style="border:none;background:none;font-size:22px;cursor:pointer;color:#666;">&times;</button>
+      </div>
+
+      <!-- Status badge -->
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:${sc.bg};margin-bottom:20px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${sc.color};display:inline-block;"></span>
+        <span style="font-size:13px;font-weight:700;color:${sc.color};">${statusLabel}</span>
+      </div>
+
+      <!-- Doctor info -->
+      <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:20px;">
+        <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#522546,#8B3A6B);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${getInitials(r.doctorName||'DR')}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;">${r.doctorName || '—'}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px;">Submitted: ${date}</div>
+        </div>
+      </div>
+
+      <!-- Spec change -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:20px;">
+        <div style="padding:14px;background:#f9f9f9;border-radius:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;margin-bottom:6px;">Current</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-primary);">${r.oldSpecialization || '—'}</div>
+        </div>
+        <div style="font-size:22px;color:#888;">→</div>
+        <div style="padding:14px;background:#f3e5f5;border-radius:12px;text-align:center;border:2px solid var(--primary,#880E4F)20;">
+          <div style="font-size:10px;font-weight:700;color:var(--primary,#880E4F);text-transform:uppercase;margin-bottom:6px;">Requested</div>
+          <div style="font-size:14px;font-weight:700;color:var(--primary,#880E4F);">${r.requestedSpecialization || '—'}</div>
+        </div>
+      </div>
+
+      <!-- Documents -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">📄 Supporting Documents (${(r.documents||[]).length})</div>
+        ${docHtml}
+      </div>
+
+      ${remarksHtml}
+
+      <!-- Action buttons -->
+      ${isPending ? `
+        <div style="margin-top:20px;">
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <button onclick="approveSpecRequestFromModal('${r.id}')" style="flex:1;padding:13px;background:#2e7d32;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✓ Approve & Update Specialization</button>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button onclick="setSpecRequestUnderReview('${r.id}')" style="flex:1;padding:13px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">🔍 Mark Under Review</button>
+            <button onclick="promptRejectSpecRequestFromModal('${r.id}')" style="flex:1;padding:13px;background:#c62828;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✕ Reject</button>
+          </div>
+        </div>
+      ` : ''}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function approveSpecRequest(id, btn) {
+  if (!confirm('Approve this specialization change? This will update the doctor\'s specialization immediately.')) return;
+  btn.disabled = true; btn.textContent = '...';
+  await _doApproveSpecRequest(id);
+}
+
+async function approveSpecRequestFromModal(id) {
+  if (!confirm('Approve this specialization change? This will update the doctor\'s specialization immediately.')) return;
+  document.getElementById('sr-modal')?.remove();
+  await _doApproveSpecRequest(id);
+}
+
+async function _doApproveSpecRequest(id) {
+  const r = allSpecRequests.find(x => x.id === id);
+  if (!r) return;
+  try {
+    const batch = db.batch();
+    // Update the request status
+    batch.update(db.collection('doctor_specialization_requests').doc(id), {
+      status: 'approved',
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    // Update the doctor's actual specialization
+    batch.update(db.collection('doctors').doc(r.doctorId), {
+      specialty:       r.requestedSpecialization,
+      specialisation:  r.requestedSpecialization,
+      updatedAt:       firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    showToast(`Specialization approved! Doctor is now a ${r.requestedSpecialization}.`);
+  } catch (err) {
+    showToast('Error: ' + err.message);
+  }
+}
+
+async function setSpecRequestUnderReview(id) {
+  document.getElementById('sr-modal')?.remove();
+  await db.collection('doctor_specialization_requests').doc(id).update({ status: 'under_review' });
+  showToast('Request marked as Under Review.');
+}
+
+function promptRejectSpecRequest(id) {
+  const r = allSpecRequests.find(x => x.id === id);
+  if (!r) return;
+  _showRejectDialog(id, r);
+}
+
+function promptRejectSpecRequestFromModal(id) {
+  document.getElementById('sr-modal')?.remove();
+  const r = allSpecRequests.find(x => x.id === id);
+  if (!r) return;
+  _showRejectDialog(id, r);
+}
+
+function _showRejectDialog(id, r) {
+  document.getElementById('sr-reject-dialog')?.remove();
+  const dialog = document.createElement('div');
+  dialog.id = 'sr-reject-dialog';
+  dialog.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  dialog.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:420px;padding:24px;">
+      <h3 style="font-size:16px;font-weight:700;margin:0 0 6px;">Reject Specialization Request</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">Please provide a reason. The doctor will be notified.</p>
+      <textarea id="sr-reject-reason" placeholder="e.g. Documents are not clear, please resubmit..." rows="4"
+        style="width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:10px;font-family:inherit;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button onclick="document.getElementById('sr-reject-dialog').remove()"
+          style="flex:1;padding:11px;border:1px solid #e0e0e0;background:#fff;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button onclick="_submitRejectSpecRequest('${id}')"
+          style="flex:1;padding:11px;background:#c62828;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">Reject Request</button>
+      </div>
+    </div>`;
+  document.body.appendChild(dialog);
+}
+
+async function _submitRejectSpecRequest(id) {
+  const reason = (document.getElementById('sr-reject-reason')?.value || '').trim();
+  if (!reason) { alert('Please enter a rejection reason.'); return; }
+  document.getElementById('sr-reject-dialog')?.remove();
+  try {
+    await db.collection('doctor_specialization_requests').doc(id).update({
+      status: 'rejected',
+      adminRemarks: reason,
+    });
+    showToast('Request rejected. Doctor has been notified.');
+  } catch (err) {
+    showToast('Error: ' + err.message);
+  }
 }
 
 // Doctors search & filter
@@ -889,11 +1259,19 @@ function resetBannerForm() {
   document.getElementById('cancel-banner-btn').style.display = 'none';
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_BANNER_SIZE_MB = 5;
+
 function previewBannerImage(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('Image too large — max 5 MB');
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    showToast('Invalid file type. Please upload JPEG, PNG, WebP, or GIF.');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > MAX_BANNER_SIZE_MB * 1024 * 1024) {
+    showToast(`Image too large — max ${MAX_BANNER_SIZE_MB} MB`);
     event.target.value = '';
     return;
   }
@@ -3474,4 +3852,197 @@ const _origSwitchTab = window.switchTab;
 window.switchTab = function(tab, title) {
   _origSwitchTab && _origSwitchTab(tab, title);
   if (tab === 'maternity') loadMaternityOverview();
+  if (tab === 'reviews')   loadReviews();
 };
+
+// ============================================
+//   DOCTOR REVIEWS
+// ============================================
+
+let _allReviews = [];
+
+async function loadReviews() {
+  try {
+    // Load all reviews ordered by newest first
+    const snap = await db.collection('doctor_reviews')
+      .orderBy('createdAt', 'desc')
+      .limit(200)
+      .get();
+
+    _allReviews = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Compute stats
+    const total = _allReviews.length;
+    const flagged = _allReviews.filter(r => r.isFlagged).length;
+    const verified = _allReviews.filter(r => r.isVerified !== false).length;
+    const avgRating = total > 0
+      ? (_allReviews.reduce((s, r) => s + (r.rating || 0), 0) / total).toFixed(1)
+      : '—';
+
+    document.getElementById('stat-total-reviews').textContent   = total.toLocaleString();
+    document.getElementById('stat-avg-rating').textContent      = total > 0 ? `${avgRating} ⭐` : '—';
+    document.getElementById('stat-flagged-reviews').textContent = flagged;
+    document.getElementById('stat-verified-reviews').textContent = verified.toLocaleString();
+
+    // Update nav badge if flagged reviews exist
+    const badge = document.getElementById('nav-reviews-flagged');
+    if (flagged > 0) {
+      badge.textContent = flagged;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    applyReviewsFilter();
+  } catch (err) {
+    console.error('Reviews load error:', err);
+  }
+}
+
+function applyReviewsFilter() {
+  const statusFilter = document.getElementById('reviews-filter-status')?.value || 'all';
+  const ratingFilter = document.getElementById('reviews-filter-rating')?.value || 'all';
+  const searchVal    = (document.getElementById('reviews-search')?.value || '').toLowerCase();
+
+  let filtered = [..._allReviews];
+
+  if (statusFilter === 'flagged') filtered = filtered.filter(r => r.isFlagged);
+  if (statusFilter === 'clean')   filtered = filtered.filter(r => !r.isFlagged);
+  if (ratingFilter !== 'all')     filtered = filtered.filter(r => Math.round(r.rating || 0) === parseInt(ratingFilter));
+  if (searchVal) {
+    filtered = filtered.filter(r =>
+      (r.patientName  || '').toLowerCase().includes(searchVal) ||
+      (r.doctorId     || '').toLowerCase().includes(searchVal) ||
+      (r.reviewText   || '').toLowerCase().includes(searchVal)
+    );
+  }
+
+  renderReviewsTable(filtered);
+}
+
+function renderReviewsTable(reviews) {
+  const tbody = document.getElementById('reviews-tbody');
+  if (!reviews.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">No reviews found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = reviews.map(r => {
+    const stars = '⭐'.repeat(Math.round(r.rating || 0));
+    const ratingNum = (r.rating || 0).toFixed(1);
+    const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('en-IN') : '—';
+    const text = (r.reviewText || '').slice(0, 80) + ((r.reviewText || '').length > 80 ? '...' : '');
+    const flagPill = r.isFlagged
+      ? '<span class="pill" style="background:#FFEBEE;color:#C62828;">Flagged</span>'
+      : '<span class="pill" style="background:#E8F5E9;color:#2E7D32;">Clean</span>';
+
+    return `<tr>
+      <td><div class="user-name">${r.patientName || '—'}</div></td>
+      <td><div class="user-sub" style="font-size:12px;">${r.doctorId || '—'}</div></td>
+      <td><span title="${ratingNum}">${stars} ${ratingNum}</span></td>
+      <td><span title="${r.reviewText || ''}">${text || '<em style="color:#9E9E9E;">No text</em>'}</span></td>
+      <td>${r.consultationType || '—'}</td>
+      <td>${date}</td>
+      <td>${flagPill}</td>
+      <td>
+        ${!r.isFlagged
+          ? `<button class="btn btn-outline" style="color:#E65100;border-color:#E65100;" onclick="flagReview('${r.id}', this)">
+               <i class="ti ti-flag"></i> Flag
+             </button>`
+          : `<button class="btn btn-approve" onclick="unflagReview('${r.id}', this)">
+               <i class="ti ti-flag-off"></i> Unflag
+             </button>`
+        }
+        <button class="btn btn-reject" style="margin-left:4px;" onclick="deleteReview('${r.id}', this)">
+          <i class="ti ti-trash"></i> Remove
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function flagReview(reviewId, btn) {
+  if (!confirm('Flag this review as policy violation? It will be hidden from patients.')) return;
+  btn.disabled = true;
+  try {
+    await db.collection('doctor_reviews').doc(reviewId).update({ isFlagged: true });
+    showToast('Review flagged and hidden from patients.');
+    loadReviews();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+async function unflagReview(reviewId, btn) {
+  btn.disabled = true;
+  try {
+    await db.collection('doctor_reviews').doc(reviewId).update({ isFlagged: false });
+    showToast('Review unflagged and restored.');
+    loadReviews();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+async function deleteReview(reviewId, btn) {
+  if (!confirm('Permanently delete this review? This cannot be undone.')) return;
+  btn.disabled = true;
+  try {
+    // Get review data first to update the rating summary
+    const reviewDoc = await db.collection('doctor_reviews').doc(reviewId).get();
+    if (!reviewDoc.exists) {
+      showToast('Review not found.');
+      return;
+    }
+    const review = reviewDoc.data();
+
+    // Delete the review document
+    await db.collection('doctor_reviews').doc(reviewId).delete();
+
+    // Remove the appointment_reviews lock so patient can re-review if needed
+    if (review.appointmentId) {
+      await db.collection('appointment_reviews').doc(review.appointmentId).delete();
+    }
+
+    // Recalculate doctor rating summary from remaining reviews
+    if (review.doctorId) {
+      const remainingSnap = await db.collection('doctor_reviews')
+        .where('doctorId', '==', review.doctorId)
+        .where('isFlagged', '==', false)
+        .get();
+
+      const remaining = remainingSnap.docs.map(d => d.data());
+      const newTotal = remaining.length;
+      const newAvg = newTotal > 0
+        ? remaining.reduce((s, r) => s + (r.rating || 0), 0) / newTotal
+        : 0;
+
+      const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      remaining.forEach(r => {
+        const bucket = Math.round(r.rating || 0);
+        if (bucket >= 1 && bucket <= 5) dist[bucket]++;
+      });
+
+      await db.collection('doctor_rating_summary').doc(review.doctorId).set({
+        averageRating: parseFloat(newAvg.toFixed(2)),
+        totalReviews: newTotal,
+        ratingDistribution: dist,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Mirror to doctors document
+      await db.collection('doctors').doc(review.doctorId).update({
+        rating: parseFloat(newAvg.toFixed(2)),
+        totalReviews: newTotal,
+      });
+    }
+
+    showToast('Review permanently deleted and ratings recalculated.');
+    loadReviews();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
