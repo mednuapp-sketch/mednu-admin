@@ -240,7 +240,7 @@ function renderDoctorsTable(doctors) {
       <td>${escHtml(d.specialisation || '—')}</td>
       <td>${escHtml(d.phone || '—')}</td>
       <td>${escHtml(String(d.consultations || 0))}</td>
-      <td>⭐ ${escHtml(d.rating ? d.rating.toFixed(1) : '—')}</td>
+      <td>${(d.totalReviews > 0 && d.rating > 0) ? `⭐ ${escHtml(d.rating.toFixed(1))} <span style="font-size:11px;color:#9E9E9E;">(${d.totalReviews})</span>` : '<span style="color:#BDBDBD;font-size:12px;">No reviews</span>'}</td>
       <td><span class="pill pill-${escHtml(safeStatus)}">${escHtml(capitalize(d.status || 'Pending'))}</span></td>
       <td>
         ${(!d.status || d.status === 'pending') ? `
